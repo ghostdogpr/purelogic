@@ -12,6 +12,9 @@ inline def getWith[S, A](using State[S])(f: S => A): A     = State.getWith(f)
 inline def set[S](using State[S])(v: S): Unit              = State.set(v)
 inline def update[S](using State[S])(f: S => S): Unit      = State.update(f)
 inline def modify[S, A](using State[S])(f: S => (A, S)): A = State.modify(f)
+inline def updateAndGet[S](using State[S])(f: S => S): S   = State.updateAndGet(f)
+inline def getAndSet[S](using State[S])(v: S): S           = State.getAndSet(v)
+inline def getAndUpdate[S](using State[S])(f: S => S): S   = State.getAndUpdate(f)
 
 // Writer
 inline def write[W](using Writer[W])(w: W): Unit                      = Writer.write(w)
@@ -21,6 +24,7 @@ inline def clear[W](using Writer[W]): Unit                            = Writer.c
 // Abort
 inline def fail[E](using Abort[E])(e: E): Nothing                                                       = Abort.fail(e)
 inline def ensure[E](using Abort[E])(condition: Boolean, error: => E): Unit                             = Abort.ensure(condition, error)
+inline def ensureNot[E](using Abort[E])(condition: Boolean, error: => E): Unit                          = Abort.ensureNot(condition, error)
 inline def extractOption[E, A](using Abort[E])(option: Option[A], error: => E): A                       = Abort.extractOption(option, error)
 inline def extractEither[E, A](using Abort[E])(either: Either[E, A]): A                                 = Abort.extractEither(either)
 inline def extractTry[A](using Abort[Throwable])(t: Try[A]): A                                          = Abort.extractTry(t)

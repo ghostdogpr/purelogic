@@ -40,7 +40,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       case Tier.Startup    => config.startupDiscount
       case Tier.Free       => fail(OrderError.NotEligible)
     }
-    modify(_.addProcessed(order.id))
+    update(_.addProcessed(order.id))
     Price(order.total * (1 - discount))
   }
 
@@ -166,7 +166,7 @@ object PureLogicSpec extends ZIOSpecDefault {
     suite("Composition")(
       test("functions compose naturally through context propagation") {
         def step1(using State[Int], Writer[String]) = {
-          modify(_ + 1)
+          update(_ + 1)
           write("step1")
         }
 

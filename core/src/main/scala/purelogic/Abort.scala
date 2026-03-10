@@ -18,9 +18,6 @@ object Abort {
     a
   }
 
-  /**
-    * Recover with optional state/log rollback.
-    */
   def recover[S, W, E, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(f: Abort[E] ?=> A)(handler: E => A): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
@@ -42,6 +39,9 @@ object Abort {
 
   def ensure[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit =
     if (!condition) abort.fail(error)
+
+  def ensureNot[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit =
+    if (condition) abort.fail(error)
 
   def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A =
     option.getOrElse(abort.fail(error))
