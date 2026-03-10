@@ -1,6 +1,6 @@
 package purelogic
 
-import scala.util.boundary
+import scala.util.{boundary, Try}
 import scala.util.boundary.break
 
 trait Abort[-E] {
@@ -21,9 +21,7 @@ object Abort {
   /**
     * Recover with optional state/log rollback.
     */
-  def recover[E, S, W, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(
-    f: Abort[E] ?=> A
-  )(handler: E => A): A = {
+  def recover[S, W, E, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(f: Abort[E] ?=> A)(handler: E => A): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
@@ -47,6 +45,12 @@ object Abort {
 
   def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A =
     option.getOrElse(abort.fail(error))
+
+  def extractEither[E, A](using abort: Abort[E])(either: Either[E, A]): A =
+    either.fold(abort.fail, identity)
+
+  def extractTry[A](using abort: Abort[Throwable])(t: Try[A]): A =
+    t.fold(abort.fail, identity)
 
   def attempt[A](using abort: Abort[Throwable])(f: => A): A =
     try f
