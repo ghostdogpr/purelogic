@@ -27,18 +27,18 @@ object PureLogicSpec extends ZIOSpecDefault {
   case class Price(value: Double)
 
   // --- The logic under test (direct style!) ---
-  def processOrder(order: Order)(using Reader[Config], Writer[AuditEntry], State[AppState], Raise[OrderError]) = {
-    val config   = ask
+  def processOrder(order: Order)(using Reader[Config], Writer[AuditEntry], State[AppState], Abort[OrderError]) = {
+    val config   = read
     ensure(order.items.nonEmpty, OrderError.EmptyOrder)
     val customer = ensureWith(
       get.customers.get(order.customerId),
       OrderError.CustomerNotFound(order.customerId)
     )
-    tell(AuditEntry(s"Processing order ${order.id} for ${customer.name}"))
+    write(AuditEntry(s"Processing order ${order.id} for ${customer.name}"))
     val discount = customer.tier match {
       case Tier.Enterprise => config.enterpriseDiscount
       case Tier.Startup    => config.startupDiscount
-      case Tier.Free       => raise(OrderError.NotEligible)
+      case Tier.Free       => fail(OrderError.NotEligible)
     }
     modify(_.addProcessed(order.id))
     Price(order.total * (1 - discount))
@@ -117,11 +117,11 @@ object PureLogicSpec extends ZIOSpecDefault {
         val (logs, result) =
           Logic.run(0, ()) {
             set(10)
-            tell("before")
+            write("before")
             val recovered = recover {
               set(99)
-              tell("inside")
-              raise("oops")
+              write("inside")
+              fail("oops")
             }(_ => -1)
             recovered
           }
@@ -135,7 +135,7 @@ object PureLogicSpec extends ZIOSpecDefault {
           Logic.run(0, ()) {
             val v = recover {
               set(42)
-              tell("kept")
+              write("kept")
               100
             }(_ => -1)
             v
@@ -149,11 +149,11 @@ object PureLogicSpec extends ZIOSpecDefault {
         val (logs, result) =
           Logic.run(0, ()) {
             set(10)
-            tell("before")
+            write("before")
             val recovered = recoverKeepLog {
               set(99)
-              tell("inside")
-              raise("oops")
+              write("inside")
+              fail("oops")
             }(_ => -1)
             recovered
           }
@@ -167,13 +167,13 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("functions compose naturally through context propagation") {
         def step1(using State[Int], Writer[String]) = {
           modify(_ + 1)
-          tell("step1")
+          write("step1")
         }
 
-        def step2(using State[Int], Writer[String], Raise[String]) = {
+        def step2(using State[Int], Writer[String], Abort[String]) = {
           val v = get
           ensure(v > 0, "must be positive")
-          tell("step2")
+          write("step2")
           v * 10
         }
 

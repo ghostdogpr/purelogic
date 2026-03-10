@@ -9,7 +9,7 @@ enum ValidationError extends Exception {
   case InvalidInput(message: String)
 }
 
-type Program[A] = (Reader[Env], Raise[ValidationError], Writer[Event], State[UserState]) ?=> A
+type Program[A] = (Reader[Env], Abort[ValidationError], Writer[Event], State[UserState]) ?=> A
 
 object Test {
   // def fakeBusinessLogic(ount: Int): Program[Unit] =
@@ -22,11 +22,11 @@ object Test {
   //   } yield ()
 
   def fakeBusinessLogic(count: Int): Program[Unit] = {
-    val max           = inquire(_.max)
-    val existingCount = inspect(_.count)
+    val max           = readWith(_.max)
+    val existingCount = getWith(_.count)
     val newCount      = existingCount + count
     ensure(newCount <= max, ValidationError.InvalidInput(s"Count is greater than max: $count > $max"))
-    (existingCount to newCount).foreach(_ => tell(Event.CountIncremented))
+    (existingCount to newCount).foreach(_ => write(Event.CountIncremented))
   }
 
   def mainLogic: Program[Unit] = {
