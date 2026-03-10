@@ -58,46 +58,43 @@ object PureLogicSpec extends ZIOSpecDefault {
   def spec = suite("PureLogic")(
     suite("Logic.run — happy path")(
       test("enterprise order") {
-        val order                      = Order(101, customerId = 1, items = List("widget"), total = 100.0)
-        val (finalState, logs, result) =
+        val order          = Order(101, customerId = 1, items = List("widget"), total = 100.0)
+        val (logs, result) =
           Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
-          result == Right(Price(80.0)),
-          finalState.processed.contains(101),
+          result == Right((initialState.addProcessed(101), Price(80.0))),
           logs.size == 1,
           logs.head.msg.contains("Acme Corp")
         )
       },
       test("startup order") {
-        val order                      = Order(102, customerId = 2, items = List("gadget"), total = 200.0)
-        val (finalState, logs, result) =
+        val order          = Order(102, customerId = 2, items = List("gadget"), total = 200.0)
+        val (logs, result) =
           Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
-          result == Right(Price(180.0)),
-          finalState.processed.contains(102)
+          result == Right((initialState.addProcessed(102), Price(180.0)))
         )
       }
     ),
     suite("Logic.run — error paths")(
       test("empty order fails") {
-        val order                      = Order(103, customerId = 1, items = Nil, total = 50.0)
-        val (finalState, logs, result) =
+        val order          = Order(103, customerId = 1, items = Nil, total = 50.0)
+        val (logs, result) =
           Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
           result == Left(OrderError.EmptyOrder),
-          finalState.processed.isEmpty,
           logs.isEmpty
         )
       },
       test("free tier not eligible") {
-        val order                      = Order(104, customerId = 3, items = List("item"), total = 100.0)
-        val (finalState, logs, result) =
+        val order          = Order(104, customerId = 3, items = List("item"), total = 100.0)
+        val (logs, result) =
           Logic.run(initialState, config) {
             processOrder(order)
           }
@@ -107,94 +104,21 @@ object PureLogicSpec extends ZIOSpecDefault {
         )
       },
       test("customer not found") {
-        val order          = Order(105, customerId = 999, items = List("item"), total = 100.0)
-        val (_, _, result) =
+        val order       = Order(105, customerId = 999, items = List("item"), total = 100.0)
+        val (_, result) =
           Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(result == Left(OrderError.CustomerNotFound(999)))
       }
     ),
-    suite("Partial capabilities")(
-      test("runReader — ask") {
-        val result = Logic.runReader(config) {
-          ask.enterpriseDiscount
-        }
-        assertTrue(result == 0.2)
-      },
-      test("runReader — inquire") {
-        val result = Logic.runReader(config) {
-          inquire(_.enterpriseDiscount)
-        }
-        assertTrue(result == 0.2)
-      },
-      test("runState — get") {
-        val (_, result) = Logic.runState(initialState) {
-          get.customers.size
-        }
-        assertTrue(result == 3)
-      },
-      test("runState — set") {
-        val (finalState, _) = Logic.runState(0) {
-          set(42)
-        }
-        assertTrue(finalState == 42)
-      },
-      test("runState — modify") {
-        val (finalState, result) = Logic.runState(0) {
-          modify(_ + 1)
-          modify(_ + 1)
-          get
-        }
-        assertTrue(result == 2, finalState == 2)
-      },
-      test("runState — inspect") {
-        val (_, result) = Logic.runState(initialState) {
-          inspect(_.customers.size)
-        }
-        assertTrue(result == 3)
-      },
-      test("runWriter — tell") {
-        val (logs, _) = Logic.runWriter {
-          tell("hello")
-          tell("world")
-        }
-        assertTrue(logs == Vector("hello", "world"))
-      },
-      test("runEither — raise") {
-        val ok  = Logic.runEither(42)
-        val err = Logic.runEither(raise("boom"))
-        assertTrue(ok == Right(42), err == Left("boom"))
-      },
-      test("runEither — ensure") {
-        val ok  = Logic.runEither(ensure(true, "fail"))
-        val err = Logic.runEither(ensure(false, "fail"))
-        assertTrue(ok == Right(()), err == Left("fail"))
-      },
-      test("runEither — ensureWith") {
-        val ok  = Logic.runEither(ensureWith(Some(42), "fail"))
-        val err = Logic.runEither(ensureWith(None, "fail"))
-        assertTrue(ok == Right(42), err == Left("fail"))
-      }
-    ),
     suite("Error recovery")(
-      test("catchError eliminates error type") {
-        val result = catchError {
-          raise("fail")
-        }(e => e.length)
-        assertTrue(result == 4)
-      },
-      test("Raise wraps in Either") {
-        val ok  = Raise(42)
-        val err = Raise(raise("no"))
-        assertTrue(ok == Right(42), err == Left("no"))
-      },
       test("recover rolls back state and logs") {
-        val (finalState, logs, result) =
+        val (logs, result) =
           Logic.run(0, ()) {
             set(10)
             tell("before")
-            val recovered = recover() {
+            val recovered = recover {
               set(99)
               tell("inside")
               raise("oops")
@@ -202,15 +126,14 @@ object PureLogicSpec extends ZIOSpecDefault {
             recovered
           }
         assertTrue(
-          result == Right(-1),
-          finalState == 10,
+          result == Right((10, -1)),
           logs == Vector("before")
         )
       },
       test("recover keeps state/logs when no error") {
-        val (finalState, logs, result) =
+        val (logs, result) =
           Logic.run(0, ()) {
-            val v = recover() {
+            val v = recover {
               set(42)
               tell("kept")
               100
@@ -218,9 +141,25 @@ object PureLogicSpec extends ZIOSpecDefault {
             v
           }
         assertTrue(
-          result == Right(100),
-          finalState == 42,
+          result == Right((42, 100)),
           logs == Vector("kept")
+        )
+      },
+      test("recoverKeepLog rolls back state only") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            set(10)
+            tell("before")
+            val recovered = recoverKeepLog {
+              set(99)
+              tell("inside")
+              raise("oops")
+            }(_ => -1)
+            recovered
+          }
+        assertTrue(
+          result == Right((10, -1)),
+          logs == Vector("before", "inside")
         )
       }
     ),
@@ -238,14 +177,13 @@ object PureLogicSpec extends ZIOSpecDefault {
           v * 10
         }
 
-        val (finalState, logs, result) =
+        val (logs, result) =
           Logic.run(0, ()) {
             step1
             step2
           }
         assertTrue(
-          result == Right(10),
-          finalState == 1,
+          result == Right((1, 10)),
           logs == Vector("step1", "step2")
         )
       }

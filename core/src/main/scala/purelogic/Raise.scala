@@ -21,20 +21,9 @@ object Raise {
   }
 
   /**
-    * Catch errors and handle them, eliminating the error type.
-    */
-  def catchError[E, A](f: Raise[E] ?=> A)(handler: E => A): A =
-    boundary[A] {
-      given Raise[E] = new Raise[E] {
-        def raise(e: E): Nothing = break(handler(e))
-      }
-      f
-    }
-
-  /**
     * Recover with optional state/log rollback.
     */
-  def recover[E, S, W, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true, resetState: Boolean = true)(
+  def recover[E, S, W, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(
     f: Raise[E] ?=> A
   )(handler: E => A): A = {
     val stateSnapshot = s.get
@@ -43,7 +32,7 @@ object Raise {
     boundary[A] {
       given Raise[E] = new Raise[E] {
         def raise(e: E): Nothing = {
-          if (resetState) s.set(stateSnapshot)
+          s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
           break(handler(e))
         }

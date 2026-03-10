@@ -14,10 +14,9 @@ inline def inspect[S, A](using s: State[S])(f: S => A): A = s.inspect(f)
 inline def tell[W](using wr: Writer[W])(w: W): Unit = wr.tell(w)
 
 // Raise
-inline def raise[E](using r: Raise[E])(e: E): Nothing                             = r.raise(e)
-inline def ensure[E](using r: Raise[E])(condition: Boolean, error: => E): Unit    = r.ensure(condition, error)
-inline def ensureWith[E, A](using r: Raise[E])(option: Option[A], error: => E): A = r.ensureWith(option, error)
-inline def catchError[E, A](f: Raise[E] ?=> A)(handler: E => A): A                = Raise.catchError(f)(handler)
-inline def recover[E, S, W, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true, resetState: Boolean = true)(f: Raise[E] ?=> A)(
-  handler: E => A
-): A = Raise.recover(resetLog, resetState)(f)(handler)
+inline def raise[E](using r: Raise[E])(e: E): Nothing                                                         = r.raise(e)
+inline def ensure[E](using r: Raise[E])(condition: Boolean, error: => E): Unit                                = r.ensure(condition, error)
+inline def ensureWith[E, A](using r: Raise[E])(option: Option[A], error: => E): A                             = r.ensureWith(option, error)
+inline def recover[E, S, W, A](using s: State[S], w: Writer[W])(f: Raise[E] ?=> A)(handler: E => A): A        = Raise.recover(resetLog = true)(f)(handler)
+inline def recoverKeepLog[E, S, W, A](using s: State[S], w: Writer[W])(f: Raise[E] ?=> A)(handler: E => A): A =
+  Raise.recover(resetLog = false)(f)(handler)
