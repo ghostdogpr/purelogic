@@ -16,7 +16,7 @@ object Raise {
   def ensureWith[E, A](using Raise[E])(option: Option[A], error: => E): A =
     option.getOrElse(Raise.raise(error))
 
-  def apply[A, E](body: Raise[E] ?=> A): Either[E, A] = {
+  def apply[E, A](body: Raise[E] ?=> A): Either[E, A] = {
     val a = boundary[Either[E, A]] {
       given Raise[E] = new Raise[E] {
         def raise(e: E): Nothing = break(Left(e))

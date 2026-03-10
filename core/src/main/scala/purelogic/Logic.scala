@@ -12,14 +12,16 @@ object Logic {
     (newState, log, res)
   }
 
-  def mockSimulate[W, S, R, E, A](using Reader[R], Raise[E])(mockState: S)(f: (Reader[R], Writer[W], State[S], Raise[E]) ?=> A): A = {
-    val env            = ask
-    val (_, _, either) = run(mockState, env)(f)
+  def simulateWith[W, S, R, E, A](using Raise[E])(mockState: S, mockEnv: R)(f: (Reader[R], Writer[W], State[S], Raise[E]) ?=> A): A = {
+    val (_, _, either) = run(mockState, mockEnv)(f)
     either match {
       case Left(cause)  => raise(cause)
       case Right(value) => value
     }
   }
+
+  def simulate[W, S, R, E, A](using State[S], Reader[R], Raise[E])(f: (Reader[R], Writer[W], State[S], Raise[E]) ?=> A): A =
+    simulateWith(get, ask)(f)
 
   /**
     * Run with only Reader.

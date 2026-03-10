@@ -30,7 +30,7 @@ object Test {
   }
 
   def mainLogic: Program[Unit] = {
-    Logic.mockSimulate(UserState(1))(fakeBusinessLogic(10))
+    Logic.simulateWith(UserState(1), Env(100))(fakeBusinessLogic(10))
     fakeBusinessLogic(10)
   }
 

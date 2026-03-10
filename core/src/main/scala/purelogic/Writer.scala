@@ -15,7 +15,7 @@ object Writer {
   def tell[W](using wr: Writer[W])(w: W): Unit = wr.tell(w)
   def clear[W](using wr: Writer[W]): Unit      = wr.clear
 
-  def apply[A, W](body: Writer[W] ?=> A): (Vector[W], A) = {
+  def apply[W, A](body: Writer[W] ?=> A): (Vector[W], A) = {
     val buffer      = ArrayBuffer[W]()
     given Writer[W] = new Writer[W] {
       def tell(w: W): Unit                           = buffer += w

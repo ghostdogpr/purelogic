@@ -2,7 +2,7 @@ package purelogic
 
 // Reader
 inline def ask[R](using r: Reader[R]): R                   = r.ask
-inline def inquire[R, B](using r: Reader[R])(f: R => B): B = Reader.inquire(f)
+inline def inquire[R, A](using r: Reader[R])(f: R => A): A = Reader.inquire(f)
 
 // State
 inline def get[S](using s: State[S]): S                   = s.get

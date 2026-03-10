@@ -27,20 +27,20 @@ object PureLogicSpec extends ZIOSpecDefault {
   case class Price(value: Double)
 
   // --- The logic under test (direct style!) ---
-  def processOrder(order: Order)(using Reader[Config], Writer[AuditEntry], State[AppState], Raise[OrderError]): Price = {
-    val config   = Reader.ask
-    Raise.ensure(order.items.nonEmpty, OrderError.EmptyOrder)
-    val customer = Raise.ensureWith(
-      State.get.customers.get(order.customerId),
+  def processOrder(order: Order)(using Reader[Config], Writer[AuditEntry], State[AppState], Raise[OrderError]) = {
+    val config   = ask
+    ensure(order.items.nonEmpty, OrderError.EmptyOrder)
+    val customer = ensureWith(
+      get.customers.get(order.customerId),
       OrderError.CustomerNotFound(order.customerId)
     )
-    Writer.tell(AuditEntry(s"Processing order ${order.id} for ${customer.name}"))
+    tell(AuditEntry(s"Processing order ${order.id} for ${customer.name}"))
     val discount = customer.tier match {
       case Tier.Enterprise => config.enterpriseDiscount
       case Tier.Startup    => config.startupDiscount
-      case Tier.Free       => Raise.raise(OrderError.NotEligible)
+      case Tier.Free       => raise(OrderError.NotEligible)
     }
-    State.modify[AppState](_.addProcessed(order.id))
+    modify(_.addProcessed(order.id))
     Price(order.total * (1 - discount))
   }
 
@@ -60,7 +60,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("enterprise order") {
         val order                      = Order(101, customerId = 1, items = List("widget"), total = 100.0)
         val (finalState, logs, result) =
-          Logic.run[Config, AuditEntry, AppState, OrderError, Price](initialState, config) {
+          Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
@@ -73,7 +73,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("startup order") {
         val order                      = Order(102, customerId = 2, items = List("gadget"), total = 200.0)
         val (finalState, logs, result) =
-          Logic.run[Config, AuditEntry, AppState, OrderError, Price](initialState, config) {
+          Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
@@ -86,7 +86,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("empty order fails") {
         val order                      = Order(103, customerId = 1, items = Nil, total = 50.0)
         val (finalState, logs, result) =
-          Logic.run[Config, AuditEntry, AppState, OrderError, Price](initialState, config) {
+          Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
@@ -98,7 +98,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("free tier not eligible") {
         val order                      = Order(104, customerId = 3, items = List("item"), total = 100.0)
         val (finalState, logs, result) =
-          Logic.run[Config, AuditEntry, AppState, OrderError, Price](initialState, config) {
+          Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(
@@ -109,66 +109,95 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("customer not found") {
         val order          = Order(105, customerId = 999, items = List("item"), total = 100.0)
         val (_, _, result) =
-          Logic.run[Config, AuditEntry, AppState, OrderError, Price](initialState, config) {
+          Logic.run(initialState, config) {
             processOrder(order)
           }
         assertTrue(result == Left(OrderError.CustomerNotFound(999)))
       }
     ),
     suite("Partial capabilities")(
-      test("runReader — only Reader") {
+      test("runReader — ask") {
         val result = Logic.runReader(config) {
-          Reader.ask.enterpriseDiscount
+          ask.enterpriseDiscount
         }
         assertTrue(result == 0.2)
       },
-      test("Reader.inquire infers types") {
+      test("runReader — inquire") {
         val result = Logic.runReader(config) {
-          Reader.inquire(_.enterpriseDiscount)
+          inquire(_.enterpriseDiscount)
         }
         assertTrue(result == 0.2)
       },
-      test("State.inspect infers types") {
+      test("runState — get") {
         val (_, result) = Logic.runState(initialState) {
-          State.inspect(_.customers.size)
+          get.customers.size
         }
         assertTrue(result == 3)
       },
-      test("runState — only State") {
+      test("runState — set") {
+        val (finalState, _) = Logic.runState(0) {
+          set(42)
+        }
+        assertTrue(finalState == 42)
+      },
+      test("runState — modify") {
         val (finalState, result) = Logic.runState(0) {
-          State.modify[Int](_ + 1)
-          State.modify[Int](_ + 1)
-          State.get
+          modify(_ + 1)
+          modify(_ + 1)
+          get
         }
         assertTrue(result == 2, finalState == 2)
       },
-      test("runEither — only Raise") {
-        val ok  = Logic.runEither[String, Int](42)
-        val err = Logic.runEither[String, Int](Raise.raise("boom"))
+      test("runState — inspect") {
+        val (_, result) = Logic.runState(initialState) {
+          inspect(_.customers.size)
+        }
+        assertTrue(result == 3)
+      },
+      test("runWriter — tell") {
+        val (logs, _) = Logic.runWriter {
+          tell("hello")
+          tell("world")
+        }
+        assertTrue(logs == Vector("hello", "world"))
+      },
+      test("runEither — raise") {
+        val ok  = Logic.runEither(42)
+        val err = Logic.runEither(raise[String]("boom"))
         assertTrue(ok == Right(42), err == Left("boom"))
+      },
+      test("runEither — ensure") {
+        val ok  = Logic.runEither(ensure(true, "fail"))
+        val err = Logic.runEither(ensure(false, "fail"))
+        assertTrue(ok == Right(()), err == Left("fail"))
+      },
+      test("runEither — ensureWith") {
+        val ok  = Logic.runEither(ensureWith(Some(42), "fail"))
+        val err = Logic.runEither(ensureWith(None, "fail"))
+        assertTrue(ok == Right(42), err == Left("fail"))
       }
     ),
     suite("Error recovery")(
       test("catchError eliminates error type") {
         val result = Recover.catchError[String, Int] {
-          Raise.raise("fail")
+          raise("fail")
         }(e => e.length)
         assertTrue(result == 4)
       },
       test("catchEither wraps in Either") {
         val ok  = Recover.catchEither[String, Int](42)
-        val err = Recover.catchEither[String, Int](Raise.raise("no"))
+        val err = Recover.catchEither[String, Int](raise("no"))
         assertTrue(ok == Right(42), err == Left("no"))
       },
       test("recover rolls back state and logs") {
         val (finalState, logs, result) =
-          Logic.run[Unit, String, Int, String, Int](0, ()) {
-            State.set(10)
-            Writer.tell("before")
+          Logic.run(0, ()) {
+            set(10)
+            tell("before")
             val recovered = Recover.recover[String, Int, String, Int]() {
-              State.set(99)
-              Writer.tell("inside")
-              Raise.raise("oops")
+              set(99)
+              tell("inside")
+              raise("oops")
             }(_ => -1)
             recovered
           }
@@ -180,10 +209,10 @@ object PureLogicSpec extends ZIOSpecDefault {
       },
       test("recover keeps state/logs when no error") {
         val (finalState, logs, result) =
-          Logic.run[Unit, String, Int, String, Int](0, ()) {
+          Logic.run(0, ()) {
             val v = Recover.recover[String, Int, String, Int]() {
-              State.set(42)
-              Writer.tell("kept")
+              set(42)
+              tell("kept")
               100
             }(_ => -1)
             v
@@ -197,20 +226,20 @@ object PureLogicSpec extends ZIOSpecDefault {
     ),
     suite("Composition")(
       test("functions compose naturally through context propagation") {
-        def step1(using State[Int], Writer[String]): Unit = {
-          State.modify[Int](_ + 1)
-          Writer.tell("step1")
+        def step1(using State[Int], Writer[String]) = {
+          modify(_ + 1)
+          tell("step1")
         }
 
-        def step2(using State[Int], Writer[String], Raise[String]): Int = {
-          val v = State.get
-          Raise.ensure(v > 0, "must be positive")
-          Writer.tell("step2")
+        def step2(using State[Int], Writer[String], Raise[String]) = {
+          val v = get
+          ensure(v > 0, "must be positive")
+          tell("step2")
           v * 10
         }
 
         val (finalState, logs, result) =
-          Logic.run[Unit, String, Int, String, Int](0, ()) {
+          Logic.run(0, ()) {
             step1
             step2
           }
