@@ -2,18 +2,22 @@ package purelogic
 
 // Reader
 inline def ask[R](using r: Reader[R]): R                   = r.ask
-inline def inquire[R, A](using r: Reader[R])(f: R => A): A = Reader.inquire(f)
+inline def inquire[R, A](using r: Reader[R])(f: R => A): A = r.inquire(f)
 
 // State
 inline def get[S](using s: State[S]): S                   = s.get
-inline def set[S](v: S)(using s: State[S]): Unit          = s.set(v)
+inline def set[S](using s: State[S])(v: S): Unit          = s.set(v)
 inline def modify[S](using s: State[S])(f: S => S): Unit  = s.modify(f)
-inline def inspect[S, B](using s: State[S])(f: S => B): B = State.inspect(f)
+inline def inspect[S, A](using s: State[S])(f: S => A): A = s.inspect(f)
 
 // Writer
-inline def tell[W](w: W)(using wr: Writer[W]): Unit = wr.tell(w)
+inline def tell[W](using wr: Writer[W])(w: W): Unit = wr.tell(w)
 
 // Raise
-inline def raise[E](e: E)(using r: Raise[E]): Nothing                          = r.raise(e)
-inline def ensure[E](using Raise[E])(condition: Boolean, error: => E): Unit    = Raise.ensure(condition, error)
-inline def ensureWith[E, A](using Raise[E])(option: Option[A], error: => E): A = Raise.ensureWith(option, error)
+inline def raise[E](using r: Raise[E])(e: E): Nothing                             = r.raise(e)
+inline def ensure[E](using r: Raise[E])(condition: Boolean, error: => E): Unit    = r.ensure(condition, error)
+inline def ensureWith[E, A](using r: Raise[E])(option: Option[A], error: => E): A = r.ensureWith(option, error)
+inline def catchError[E, A](f: Raise[E] ?=> A)(handler: E => A): A                = Raise.catchError(f)(handler)
+inline def recover[E, S, W, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true, resetState: Boolean = true)(f: Raise[E] ?=> A)(
+  handler: E => A
+): A = Raise.recover(resetLog, resetState)(f)(handler)

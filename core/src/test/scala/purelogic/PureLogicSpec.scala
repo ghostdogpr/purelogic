@@ -163,7 +163,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       },
       test("runEither — raise") {
         val ok  = Logic.runEither(42)
-        val err = Logic.runEither(raise[String]("boom"))
+        val err = Logic.runEither(raise("boom"))
         assertTrue(ok == Right(42), err == Left("boom"))
       },
       test("runEither — ensure") {
@@ -179,14 +179,14 @@ object PureLogicSpec extends ZIOSpecDefault {
     ),
     suite("Error recovery")(
       test("catchError eliminates error type") {
-        val result = Recover.catchError[String, Int] {
+        val result = catchError {
           raise("fail")
         }(e => e.length)
         assertTrue(result == 4)
       },
-      test("catchEither wraps in Either") {
-        val ok  = Recover.catchEither[String, Int](42)
-        val err = Recover.catchEither[String, Int](raise("no"))
+      test("Raise wraps in Either") {
+        val ok  = Raise(42)
+        val err = Raise(raise("no"))
         assertTrue(ok == Right(42), err == Left("no"))
       },
       test("recover rolls back state and logs") {
@@ -194,7 +194,7 @@ object PureLogicSpec extends ZIOSpecDefault {
           Logic.run(0, ()) {
             set(10)
             tell("before")
-            val recovered = Recover.recover[String, Int, String, Int]() {
+            val recovered = recover() {
               set(99)
               tell("inside")
               raise("oops")
@@ -210,7 +210,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("recover keeps state/logs when no error") {
         val (finalState, logs, result) =
           Logic.run(0, ()) {
-            val v = Recover.recover[String, Int, String, Int]() {
+            val v = recover() {
               set(42)
               tell("kept")
               100
