@@ -5,6 +5,7 @@ import scala.util.boundary.break
 
 trait Abort[-E] {
   def fail(e: E): Nothing
+
   def ensure(condition: Boolean, error: => E): Unit    = if (!condition) fail(error)
   def ensureWith[A](option: Option[A], error: => E): A = option.getOrElse(fail(error))
 }

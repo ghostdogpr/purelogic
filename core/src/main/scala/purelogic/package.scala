@@ -6,9 +6,9 @@ inline def readWith[R, A](using r: Reader[R])(f: R => A): A = r.readWith(f)
 
 // State
 inline def get[S](using s: State[S]): S                   = s.get
+inline def getWith[S, A](using s: State[S])(f: S => A): A = s.getWith(f)
 inline def set[S](using s: State[S])(v: S): Unit          = s.set(v)
 inline def modify[S](using s: State[S])(f: S => S): Unit  = s.modify(f)
-inline def getWith[S, A](using s: State[S])(f: S => A): A = s.getWith(f)
 
 // Writer
 inline def write[W](using wr: Writer[W])(w: W): Unit = wr.write(w)
