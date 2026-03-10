@@ -16,7 +16,7 @@ inline def write[W](using wr: Writer[W])(w: W): Unit = wr.write(w)
 // Abort
 inline def fail[E](using r: Abort[E])(e: E): Nothing                                                          = r.fail(e)
 inline def ensure[E](using r: Abort[E])(condition: Boolean, error: => E): Unit                                = r.ensure(condition, error)
-inline def ensureWith[E, A](using r: Abort[E])(option: Option[A], error: => E): A                             = r.ensureWith(option, error)
+inline def ensureOption[E, A](using r: Abort[E])(option: Option[A], error: => E): A                           = r.ensureOption(option, error)
 inline def recover[E, S, W, A](using s: State[S], w: Writer[W])(f: Abort[E] ?=> A)(handler: E => A): A        = Abort.recover(resetLog = true)(f)(handler)
 inline def recoverKeepLog[E, S, W, A](using s: State[S], w: Writer[W])(f: Abort[E] ?=> A)(handler: E => A): A =
   Abort.recover(resetLog = false)(f)(handler)

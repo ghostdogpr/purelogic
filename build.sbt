@@ -29,10 +29,9 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-test"     % "2.1.16" % Test,
-      "dev.zio" %% "zio-test-sbt" % "2.1.16" % Test
-    ),
-    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+      "dev.zio" %%% "zio-test"     % "2.1.24" % Test,
+      "dev.zio" %%% "zio-test-sbt" % "2.1.24" % Test
+    )
   )
   .jsSettings(Test / fork := false)
 
