@@ -30,7 +30,7 @@ object PureLogicSpec extends ZIOSpecDefault {
   def processOrder(order: Order)(using Reader[Config], Writer[AuditEntry], State[AppState], Abort[OrderError]) = {
     val config   = read
     ensure(order.items.nonEmpty, OrderError.EmptyOrder)
-    val customer = ensureOption(
+    val customer = extractOption(
       get.customers.get(order.customerId),
       OrderError.CustomerNotFound(order.customerId)
     )

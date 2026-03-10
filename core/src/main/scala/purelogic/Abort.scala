@@ -5,9 +5,6 @@ import scala.util.boundary.break
 
 trait Abort[-E] {
   def fail(e: E): Nothing
-
-  def ensure(condition: Boolean, error: => E): Unit      = if (!condition) fail(error)
-  def ensureOption[A](option: Option[A], error: => E): A = option.getOrElse(fail(error))
 }
 
 object Abort {
@@ -41,4 +38,17 @@ object Abort {
       f
     }
   }
+
+  def fail[E](using abort: Abort[E])(e: E): Nothing =
+    abort.fail(e)
+
+  def ensure[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit =
+    if (!condition) abort.fail(error)
+
+  def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A =
+    option.getOrElse(abort.fail(error))
+
+  def attempt[A](using abort: Abort[Throwable])(f: => A): A =
+    try f
+    catch { case e: Throwable => abort.fail(e) }
 }

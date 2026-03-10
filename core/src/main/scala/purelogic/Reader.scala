@@ -2,8 +2,6 @@ package purelogic
 
 trait Reader[+R] {
   def read: R
-
-  def readWith[A](f: R => A): A = f(read)
 }
 
 object Reader {
@@ -13,4 +11,8 @@ object Reader {
     }
     body
   }
+
+  def read[R](using r: Reader[R]): R = r.read
+
+  def readWith[R, A](using r: Reader[R])(f: R => A): A = f(r.read)
 }

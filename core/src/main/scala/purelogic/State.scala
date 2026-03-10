@@ -3,9 +3,6 @@ package purelogic
 trait State[S] {
   def get: S
   def set(s: S): Unit
-
-  def getWith[A](f: S => A): A = f(get)
-  def modify(f: S => S): Unit  = set(f(get))
 }
 
 object State {
@@ -18,4 +15,9 @@ object State {
     val a          = body
     (current, a)
   }
+
+  def get[S](using s: State[S]): S                   = s.get
+  def set[S](using s: State[S])(v: S): Unit          = s.set(v)
+  def modify[S](using s: State[S])(f: S => S): Unit  = set(f(get))
+  def getWith[S, A](using s: State[S])(f: S => A): A = f(get)
 }

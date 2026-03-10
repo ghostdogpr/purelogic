@@ -23,4 +23,7 @@ object Writer {
     val a           = body
     (buffer.toVector, a)
   }
+
+  def write[W](using writer: Writer[W])(w: W): Unit = writer.write(w)
+  def clear[W](using writer: Writer[W]): Unit       = writer.clear
 }
