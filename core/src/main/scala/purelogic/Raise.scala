@@ -1,8 +1,9 @@
 package purelogic
 
-import scala.util.boundary.{break, Label}
+import scala.util.boundary
+import scala.util.boundary.break
 
-sealed trait Raise[-E] {
+trait Raise[-E] {
   def raise(e: E): Nothing
 }
 
@@ -15,11 +16,13 @@ object Raise {
   def ensureWith[E, A](using Raise[E])(option: Option[A], error: => E): A =
     option.getOrElse(Raise.raise(error))
 
-  private[purelogic] def make[E](handler: E => Nothing): Raise[E] =
-    new Raise[E] {
-      def raise(e: E): Nothing = handler(e)
+  def apply[A, E](body: Raise[E] ?=> A): Either[E, A] = {
+    val a = boundary[Either[E, A]] {
+      given Raise[E] = new Raise[E] {
+        def raise(e: E): Nothing = break(Left(e))
+      }
+      Right(body)
     }
-
-  private[purelogic] def makeRaise[E](using label: Label[Left[E, Nothing]]): Raise[E] =
-    make(e => break(Left(e)))
+    a
+  }
 }

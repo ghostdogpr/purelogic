@@ -10,7 +10,9 @@ object Recover {
     */
   def catchError[E, A](f: Raise[E] ?=> A)(handler: E => A): A =
     boundary[A] {
-      given Raise[E] = Raise.make(e => break(handler(e)))
+      given Raise[E] = new Raise[E] {
+        def raise(e: E): Nothing = break(handler(e))
+      }
       f
     }
 
@@ -18,10 +20,7 @@ object Recover {
     * Catch errors into Either.
     */
   def catchEither[E, A](f: Raise[E] ?=> A): Either[E, A] =
-    boundary[Either[E, A]] {
-      given Raise[E] = Raise.make(e => break(Left(e)))
-      Right(f)
-    }
+    Raise(f)
 
   /**
     * Recover with optional state/log rollback.
@@ -33,10 +32,12 @@ object Recover {
     val logSnapshot   = w.snapshot
 
     boundary[A] {
-      given Raise[E] = Raise.make { e =>
-        if (resetState) s.set(stateSnapshot)
-        if (resetLog) w.rollback(logSnapshot)
-        break(handler(e))
+      given Raise[E] = new Raise[E] {
+        def raise(e: E): Nothing = {
+          if (resetState) s.set(stateSnapshot)
+          if (resetLog) w.rollback(logSnapshot)
+          break(handler(e))
+        }
       }
       f
     }

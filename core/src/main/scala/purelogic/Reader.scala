@@ -1,6 +1,6 @@
 package purelogic
 
-sealed trait Reader[R] {
+trait Reader[+R] {
   def ask: R
 }
 
@@ -9,7 +9,10 @@ object Reader {
 
   def inquire[R, B](using r: Reader[R])(f: R => B): B = f(r.ask)
 
-  private[purelogic] def make[R](value: R): Reader[R] = new Reader[R] {
-    def ask: R = value
+  def apply[A, R](value: R)(body: Reader[R] ?=> A): A = {
+    given Reader[R] = new Reader[R] {
+      def ask: R = value
+    }
+    body
   }
 }

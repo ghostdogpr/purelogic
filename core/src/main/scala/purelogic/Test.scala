@@ -29,10 +29,12 @@ object Test {
     (existingCount to newCount).foreach(_ => tell(Event.CountIncremented))
   }
 
-  def mainLogic: Program[Unit] =
+  def mainLogic: Program[Unit] = {
+    Logic.mockSimulate(UserState(1))(fakeBusinessLogic(10))
     fakeBusinessLogic(10)
+  }
 
   @main
   def main =
-    Logic.run(UserState(100), Env(100))(mainLogic)._3.left.foreach(_.printStackTrace())
+    println(Logic.run(UserState(10), Env(100))(mainLogic))
 }
