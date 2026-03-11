@@ -1,5 +1,6 @@
 package purelogic
 
+import scala.caps.SharedCapability
 import scala.util.boundary
 import scala.util.boundary.break
 
@@ -11,7 +12,7 @@ import scala.util.boundary.break
   * @tparam E
   *   the type of error
   */
-trait Abort[-E] {
+trait Abort[-E] extends SharedCapability {
 
   /**
     * Aborts the computation with the given error.

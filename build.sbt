@@ -1,4 +1,4 @@
-val scala3Version = "3.3.7"
+val scala3Version = "3.8.2"
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
@@ -76,11 +76,12 @@ lazy val benchmarks = project
 lazy val commonSettings = Def.settings(
   scalacOptions ++= Seq(
     "-deprecation",
-    "-Xfatal-warnings",
+    "-Werror",
     "-no-indent",
     "-Wunused:imports,params,privates,implicits,explicits,nowarn",
     "-Wvalue-discard",
-    "-Ykind-projector"
+    "-Xkind-projector",
+    "-language:experimental.captureChecking"
   ),
   Test / fork := true
 )

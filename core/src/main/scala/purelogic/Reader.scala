@@ -1,5 +1,7 @@
 package purelogic
 
+import scala.caps.SharedCapability
+
 /**
   * Read-only access to a value of type `R`.
   *
@@ -8,7 +10,7 @@ package purelogic
   * @tparam R
   *   the type of the value to read
   */
-trait Reader[+R] {
+trait Reader[+R] extends SharedCapability {
 
   /**
     * Returns the current reader value.

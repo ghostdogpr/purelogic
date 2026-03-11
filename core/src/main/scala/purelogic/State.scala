@@ -1,5 +1,7 @@
 package purelogic
 
+import scala.caps.SharedCapability
+
 /**
   * Read-only access to a mutable state of type `S`.
   *
@@ -8,7 +10,7 @@ package purelogic
   * @tparam S
   *   the type of the state
   */
-trait StateReader[+S] {
+trait StateReader[+S] extends SharedCapability {
 
   /**
     * Returns the current state.
@@ -29,7 +31,7 @@ trait StateReader[+S] {
   * @tparam S
   *   the type of the state
   */
-trait StateWriter[-S] {
+trait StateWriter[-S] extends SharedCapability {
 
   /**
     * Replaces the state with a new value.

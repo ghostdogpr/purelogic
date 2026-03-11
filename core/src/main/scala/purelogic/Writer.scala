@@ -1,6 +1,7 @@
 package purelogic
 
 import scala.annotation.unchecked.uncheckedVariance
+import scala.caps.SharedCapability
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -11,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
   * @tparam W
   *   the type of values to accumulate
   */
-trait Writer[-W] {
+trait Writer[-W] extends SharedCapability {
 
   /**
     * Appends a single value to the log.
