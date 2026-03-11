@@ -1,0 +1,11 @@
+# PureLogic
+
+**PureLogic** is a **[Scala](https://www.scala-lang.org/) open source library** for writing **direct-style, pure business logic** using **context functions** (aka capabilities).
+
+It is designed to be **monad-free**, meaning that effects like `Reader`, `Writer`, `State`, and `Abort` compose naturally through Scala 3's `given`/`using` mechanism instead of monad transformers or for-comprehensions.
+
+It provides an **opinionated way to write pure domain logic** in Scala, using a limited set of primitives.
+
+It is available for Scala 3.8.x and later versions. The core module is available for both Scala JVM and Scala.js.
+
+### Consult the [Documentation](https://ghostdogpr.github.io/purelogic/docs/) to learn how to use PureLogic.
