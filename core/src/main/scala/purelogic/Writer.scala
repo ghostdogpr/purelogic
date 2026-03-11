@@ -22,8 +22,8 @@ object Writer {
       private[purelogic] def snapshot: Int           = buffer.length
       private[purelogic] def rollback(to: Int): Unit = buffer.dropRightInPlace(buffer.length - to)
     }
-    val a           = body
-    (buffer.toVector, a)
+    val result      = body
+    (buffer.toVector, result)
   }
 
   def write[W](using writer: Writer[W])(w: W): Unit                      = writer.write(w)

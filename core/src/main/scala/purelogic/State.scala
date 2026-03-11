@@ -12,8 +12,8 @@ object State {
       def get: S          = current
       def set(s: S): Unit = current = s
     }
-    val a          = body
-    (current, a)
+    val result     = body
+    (current, result)
   }
 
   def get[S](using s: State[S]): S                       = s.get
