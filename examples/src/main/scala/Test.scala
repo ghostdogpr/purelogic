@@ -1,4 +1,6 @@
-package purelogic
+package examples
+
+import purelogic.*
 
 case class Env(max: Int)
 case class UserState(count: Int)
