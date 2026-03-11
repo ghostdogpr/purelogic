@@ -8,15 +8,13 @@ trait Abort[-E] {
 }
 
 object Abort {
-  def apply[E, A](body: Abort[E] ?=> A): Either[E, A] = {
-    val a = boundary[Either[E, A]] {
+  def apply[E, A](body: Abort[E] ?=> A): Either[E, A] =
+    boundary[Either[E, A]] {
       given Abort[E] = new Abort[E] {
         def fail(e: E): Nothing = break(Left(e))
       }
       Right(body)
     }
-    a
-  }
 
   def recover[S, W, E, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(f: Abort[E] ?=> A)(handler: E => A): A = {
     val stateSnapshot = s.get
@@ -28,8 +26,8 @@ object Abort {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
           break(handler(e))
-        }
       }
+    }
       f
     }
   }
