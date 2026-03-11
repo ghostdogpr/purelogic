@@ -26,8 +26,8 @@ object Abort {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
           break(handler(e))
+        }
       }
-    }
       f
     }
   }
