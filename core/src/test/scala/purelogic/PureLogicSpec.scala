@@ -13,13 +13,13 @@ object PureLogicSpec extends ZIOSpecDefault {
 
   def addItem(item: String)(using Reader[Config], Writer[Log], State[AppState], Abort[AppError]) = {
     ensure(item.nonEmpty, AppError.Invalid)
-    val discount = readWith(_.discount)
+    val discount = read(_.discount)
     update(s => s.copy(items = s.items :+ item))
     write(Log(s"Added $item with discount $discount"))
   }
 
   def lookupItem(idx: Int)(using State[AppState], Abort[AppError]) = {
-    val items = getWith(_.items)
+    val items = get(_.items)
     extractOption(items.lift(idx), AppError.NotFound(s"index $idx"))
   }
 
@@ -32,8 +32,8 @@ object PureLogicSpec extends ZIOSpecDefault {
         val result = Reader(42)(read)
         assertTrue(result == 42)
       },
-      test("readWith projects the environment") {
-        val result = Reader("hello")(readWith(_.length))
+      test("read projects the environment") {
+        val result = Reader("hello")(read(_.length))
         assertTrue(result == 5)
       }
     ),
@@ -45,8 +45,8 @@ object PureLogicSpec extends ZIOSpecDefault {
         val (_, result) = State(10)(get)
         assertTrue(result == 10)
       },
-      test("getWith projects the state") {
-        val (_, result) = State(List(1, 2, 3))(getWith(_.size))
+      test("get projects the state") {
+        val (_, result) = State(List(1, 2, 3))(get(_.size))
         assertTrue(result == 3)
       },
       test("set replaces the state") {
@@ -237,7 +237,7 @@ object PureLogicSpec extends ZIOSpecDefault {
           Logic.runInfallible(AppState(Nil), Config(0.1)) {
             update(s => s.copy(items = s.items :+ "item"))
             write(Log("done"))
-            getWith(_.items.size)
+            get(_.items.size)
           }
         assertTrue(
           result == 1,

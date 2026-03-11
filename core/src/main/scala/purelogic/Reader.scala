@@ -12,7 +12,6 @@ object Reader {
     body
   }
 
-  def read[R](using r: Reader[R]): R = r.read
-
-  def readWith[R, A](using r: Reader[R])(f: R => A): A = f(r.read)
+  def read[R](using r: Reader[R]): R               = r.read
+  def read[R, A](using r: Reader[R])(f: R => A): A = f(r.read)
 }

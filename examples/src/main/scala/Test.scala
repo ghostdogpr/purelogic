@@ -24,8 +24,8 @@ object Test {
   //   } yield ()
 
   def fakeBusinessLogic(count: Int): Program[Unit] = {
-    val max           = readWith(_.max)
-    val existingCount = getWith(_.count)
+    val max           = read(_.max)
+    val existingCount = get(_.count)
     val newCount      = existingCount + count
     ensure(newCount <= max, ValidationError.InvalidInput(s"Count is greater than max: $count > $max"))
     (existingCount to newCount).foreach(_ => write(Event.CountIncremented))

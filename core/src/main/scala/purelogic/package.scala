@@ -3,12 +3,12 @@ package purelogic
 import scala.util.Try
 
 // Reader
-inline def read[R](using Reader[R]): R                   = Reader.read
-inline def readWith[R, A](using Reader[R])(f: R => A): A = Reader.readWith(f)
+inline def read[R](using Reader[R]): R               = Reader.read
+inline def read[R, A](using Reader[R])(f: R => A): A = Reader.read(f)
 
 // State
 inline def get[S](using State[S]): S                       = State.get
-inline def getWith[S, A](using State[S])(f: S => A): A     = State.getWith(f)
+inline def get[S, A](using State[S])(f: S => A): A         = State.get(f)
 inline def set[S](using State[S])(v: S): Unit              = State.set(v)
 inline def update[S](using State[S])(f: S => S): Unit      = State.update(f)
 inline def modify[S, A](using State[S])(f: S => (A, S)): A = State.modify(f)
