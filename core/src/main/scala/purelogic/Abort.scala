@@ -5,6 +5,18 @@ import scala.util.boundary.break
 
 trait Abort[-E] {
   def fail(e: E): Nothing
+
+  def ensure(condition: Boolean, error: => E): Unit =
+    if (!condition) fail(error)
+
+  def ensureNot(condition: Boolean, error: => E): Unit =
+    if (condition) fail(error)
+
+  def extractOption[A](option: Option[A], error: => E): A =
+    option.getOrElse(fail(error))
+
+  def extractEither[A](either: Either[E, A]): A =
+    either.fold(fail, identity)
 }
 
 object Abort {
@@ -36,20 +48,11 @@ object Abort {
     }
   }
 
-  def fail[E](using abort: Abort[E])(e: E): Nothing =
-    abort.fail(e)
-
-  def ensure[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit =
-    if (!condition) abort.fail(error)
-
-  def ensureNot[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit =
-    if (condition) abort.fail(error)
-
-  def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A =
-    option.getOrElse(abort.fail(error))
-
-  def extractEither[E, A](using abort: Abort[E])(either: Either[E, A]): A =
-    either.fold(abort.fail, identity)
+  def fail[E](using abort: Abort[E])(e: E): Nothing                                 = abort.fail(e)
+  def ensure[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit       = abort.ensure(condition, error)
+  def ensureNot[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit    = abort.ensureNot(condition, error)
+  def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A = abort.extractOption(option, error)
+  def extractEither[E, A](using abort: Abort[E])(either: Either[E, A]): A           = abort.extractEither(either)
 
   def extractTry[A](t: Try[A])(using abort: Abort[Throwable]): A =
     t.fold(abort.fail, identity)
