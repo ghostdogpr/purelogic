@@ -34,7 +34,7 @@ object Writer {
     private[purelogic] def rollback(to: Int): Unit   = ()
   }
 
-  def write[W](using writer: Writer[W])(w: W): Unit                      = writer.write(w)
-  def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit = writer.writeAll(elems)
-  def clear[W](using writer: Writer[W]): Unit                            = writer.clear
+  inline def write[W](using writer: Writer[W])(w: W): Unit                      = writer.write(w)
+  inline def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit = writer.writeAll(elems)
+  inline def clear[W](using writer: Writer[W]): Unit                            = writer.clear
 }

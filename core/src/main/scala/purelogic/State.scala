@@ -28,12 +28,12 @@ object State {
     def set(s: Unit): Unit = ()
   }
 
-  def get[S](using s: State[S]): S                       = s.get
-  def get[S, A](using s: State[S])(f: S => A): A         = s.get(f)
-  def set[S](using s: State[S])(v: S): Unit              = s.set(v)
-  def update[S](using s: State[S])(f: S => S): Unit      = s.update(f)
-  def updateAndGet[S](using s: State[S])(f: S => S): S   = s.updateAndGet(f)
-  def modify[S, A](using s: State[S])(f: S => (A, S)): A = s.modify(f)
-  def getAndSet[S](using s: State[S])(v: S): S           = s.getAndSet(v)
-  def getAndUpdate[S](using s: State[S])(f: S => S): S   = s.getAndUpdate(f)
+  inline def get[S](using s: State[S]): S                       = s.get
+  inline def get[S, A](using s: State[S])(f: S => A): A         = s.get(f)
+  inline def set[S](using s: State[S])(v: S): Unit              = s.set(v)
+  inline def update[S](using s: State[S])(f: S => S): Unit      = s.update(f)
+  inline def updateAndGet[S](using s: State[S])(f: S => S): S   = s.updateAndGet(f)
+  inline def modify[S, A](using s: State[S])(f: S => (A, S)): A = s.modify(f)
+  inline def getAndSet[S](using s: State[S])(v: S): S           = s.getAndSet(v)
+  inline def getAndUpdate[S](using s: State[S])(f: S => S): S   = s.getAndUpdate(f)
 }

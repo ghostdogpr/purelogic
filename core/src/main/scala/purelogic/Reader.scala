@@ -17,6 +17,6 @@ object Reader {
     def read: Unit = ()
   }
 
-  def read[R](using r: Reader[R]): R               = r.read
-  def read[R, A](using r: Reader[R])(f: R => A): A = r.read(f)
+  inline def read[R](using r: Reader[R]): R               = r.read
+  inline def read[R, A](using r: Reader[R])(f: R => A): A = r.read(f)
 }
