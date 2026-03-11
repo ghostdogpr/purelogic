@@ -16,7 +16,11 @@ object Abort {
       Right(body)
     }
 
-  def recover[S, W, E, A](using s: State[S], w: Writer[W])(resetLog: Boolean = true)(f: Abort[E] ?=> A)(handler: E => A): A = {
+  given Abort[Nothing] = new Abort[Nothing] {
+    def fail(e: Nothing): Nothing = e
+  }
+
+  def recover[W, S, E, A](using w: Writer[W], s: State[S])(resetLog: Boolean = true)(f: Abort[E] ?=> A)(handler: E => A): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 

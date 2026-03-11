@@ -26,6 +26,14 @@ object Writer {
     (buffer.toVector, result)
   }
 
+  given Writer[Nothing] = new Writer[Nothing] {
+    def write(w: Nothing): Unit                      = ()
+    def writeAll(elems: IterableOnce[Nothing]): Unit = ()
+    def clear: Unit                                  = ()
+    private[purelogic] def snapshot: Int             = 0
+    private[purelogic] def rollback(to: Int): Unit   = ()
+  }
+
   def write[W](using writer: Writer[W])(w: W): Unit                      = writer.write(w)
   def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit = writer.writeAll(elems)
   def clear[W](using writer: Writer[W]): Unit                            = writer.clear

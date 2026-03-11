@@ -202,6 +202,14 @@ object PureLogicSpec extends ZIOSpecDefault {
           result == Right((10, -1)),
           logs == Vector("before", "inside")
         )
+      },
+      test("recover can be used without State or Writer") {
+        val result = Abort {
+          recover {
+            fail("boom")
+          }(_ => "recovered")
+        }
+        assertTrue(result == Right("recovered"))
       }
     ),
     // ---------------------------------------------------------------------------

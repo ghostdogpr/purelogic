@@ -28,6 +28,6 @@ inline def ensureNot[E](using Abort[E])(condition: Boolean, error: => E): Unit  
 inline def extractOption[E, A](using Abort[E])(option: Option[A], error: => E): A                       = Abort.extractOption(option, error)
 inline def extractEither[E, A](using Abort[E])(either: Either[E, A]): A                                 = Abort.extractEither(either)
 inline def extractTry[A](using Abort[Throwable])(t: Try[A]): A                                          = Abort.extractTry(t)
-inline def recover[S, W, E, A](using State[S], Writer[W])(f: Abort[E] ?=> A)(handler: E => A): A        = Abort.recover(resetLog = true)(f)(handler)
-inline def recoverKeepLog[S, W, E, A](using State[S], Writer[W])(f: Abort[E] ?=> A)(handler: E => A): A = Abort.recover(resetLog = false)(f)(handler)
 inline def attempt[A](using Abort[Throwable])(f: => A): A                                               = Abort.attempt(f)
+inline def recover[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A        = Abort.recover(resetLog = true)(f)(handler)
+inline def recoverKeepLog[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A = Abort.recover(resetLog = false)(f)(handler)

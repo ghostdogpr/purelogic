@@ -12,6 +12,10 @@ object Reader {
     body
   }
 
+  given Reader[Unit] = new Reader[Unit] {
+    def read: Unit = ()
+  }
+
   def read[R](using r: Reader[R]): R               = r.read
   def read[R, A](using r: Reader[R])(f: R => A): A = f(r.read)
 }

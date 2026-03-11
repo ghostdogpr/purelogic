@@ -16,6 +16,11 @@ object State {
     (current, result)
   }
 
+  given State[Unit] = new State[Unit] {
+    def get: Unit          = ()
+    def set(s: Unit): Unit = ()
+  }
+
   def get[S](using s: State[S]): S                       = s.get
   def get[S, A](using s: State[S])(f: S => A): A         = f(s.get)
   def set[S](using s: State[S])(v: S): Unit              = s.set(v)
