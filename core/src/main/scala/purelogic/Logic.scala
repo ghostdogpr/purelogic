@@ -18,6 +18,6 @@ object Logic {
     }
   }
 
-  def simulate[W, S, R, E, A](using State[S], Reader[R], Abort[E])(f: (Reader[R], Writer[W], State[S], Abort[E]) ?=> A): A =
+  def simulate[W, S, R, E, A](using Reader[R], State[S], Abort[E])(f: (Reader[R], Writer[W], State[S], Abort[E]) ?=> A): A =
     simulateWith(get, read)(f)
 }

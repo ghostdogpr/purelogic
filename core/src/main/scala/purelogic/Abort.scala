@@ -51,10 +51,10 @@ object Abort {
   def extractEither[E, A](using abort: Abort[E])(either: Either[E, A]): A =
     either.fold(abort.fail, identity)
 
-  def extractTry[A](using abort: Abort[Throwable])(t: Try[A]): A =
+  def extractTry[A](t: Try[A])(using abort: Abort[Throwable]): A =
     t.fold(abort.fail, identity)
 
-  def attempt[A](using abort: Abort[Throwable])(f: => A): A =
+  def attempt[A](f: => A)(using abort: Abort[Throwable]): A =
     try f
     catch { case e: Throwable => abort.fail(e) }
 }
