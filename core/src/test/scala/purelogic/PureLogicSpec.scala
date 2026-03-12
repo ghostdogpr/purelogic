@@ -4,6 +4,8 @@ import scala.util.{Failure, Success}
 
 import zio.test.*
 
+import purelogic.syntax.*
+
 object PureLogicSpec extends ZIOSpecDefault {
 
   case class Config(discount: Double)
