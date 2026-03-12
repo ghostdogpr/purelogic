@@ -211,6 +211,36 @@ object PureLogicSpec extends ZIOSpecDefault {
       }
     ),
     // ---------------------------------------------------------------------------
+    // orFail extensions
+    // ---------------------------------------------------------------------------
+    suite("orFail")(
+      test("Some.orFail returns the value") {
+        val result = Abort(Some(42).orFail("missing"))
+        assertTrue(result == Right(42))
+      },
+      test("None.orFail fails with the error") {
+        val result = Abort(None.orFail("missing"))
+        assertTrue(result == Left("missing"))
+      },
+      test("Right.orFail returns the value") {
+        val result = Abort(Right(42).orFail)
+        assertTrue(result == Right(42))
+      },
+      test("Left.orFail fails with the error") {
+        val result = Abort(Left("err").orFail)
+        assertTrue(result == Left("err"))
+      },
+      test("Success.orFail returns the value") {
+        val result = Abort(Success(42).orFail)
+        assertTrue(result == Right(42))
+      },
+      test("Failure.orFail fails with the exception") {
+        val ex     = new RuntimeException("boom")
+        val result = Abort(Failure(ex).orFail)
+        assertTrue(result == Left(ex))
+      }
+    ),
+    // ---------------------------------------------------------------------------
     // Recovery
     // ---------------------------------------------------------------------------
     suite("Recovery")(
