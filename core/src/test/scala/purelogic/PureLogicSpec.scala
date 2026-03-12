@@ -35,6 +35,26 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("read projects the environment") {
         val result = Reader("hello")(read(_.length))
         assertTrue(result == 5)
+      },
+      test("local provides a modified environment for the block") {
+        val (inner, outer) = Reader(10) {
+          val inner = Reader.local(_ + 5) {
+            read
+          }
+          val outer = read
+          (inner, outer)
+        }
+        assertTrue(inner == 15, outer == 10)
+      },
+      test("focus narrows the environment for the block") {
+        val (inner, outer) = Reader(("hello", 42)) {
+          val inner = Reader.focus(_._2) {
+            read
+          }
+          val outer = read
+          (inner, outer)
+        }
+        assertTrue(inner == 42, outer == ("hello", 42))
       }
     ),
     // ---------------------------------------------------------------------------
@@ -72,6 +92,28 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("getAndUpdate returns old state and transforms") {
         val (finalState, old) = State(10)(getAndUpdate(_ + 5))
         assertTrue(old == 10, finalState == 15)
+      },
+      test("local provides a modified state and restores it after the block") {
+        val (finalState, (inner, outer)) =
+          State(10) {
+            val inner = State.local(_ + 5) {
+              get
+            }
+            val outer = get
+            (inner, outer)
+          }
+        assertTrue(inner == 15, outer == 10, finalState == 10)
+      },
+      test("focus updates a sub-state") {
+        case class AppState(counter: Int, name: String)
+        val (finalState, inner) =
+          State(AppState(1, "initial")) {
+            focus(_.counter)((s, v) => s.copy(counter = v)) {
+              update(_ + 5)
+              get
+            }
+          }
+        assertTrue(inner == 6, finalState == AppState(6, "initial"))
       }
     ),
     // ---------------------------------------------------------------------------
@@ -93,6 +135,21 @@ object PureLogicSpec extends ZIOSpecDefault {
           write("after")
         }
         assertTrue(logs == Vector("after"))
+      },
+      test("capture returns the logs from a block and keeps them") {
+        val (logs, result) = Writer {
+          val (inner, value) = capture {
+            write("a")
+            write("b")
+            42
+          }
+          write("c")
+          (inner, value)
+        }
+        assertTrue(
+          logs == Vector("a", "b", "c"),
+          result == (Vector("a", "b"), 42)
+        )
       }
     ),
     // ---------------------------------------------------------------------------

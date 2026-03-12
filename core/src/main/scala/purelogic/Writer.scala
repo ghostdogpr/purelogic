@@ -1,15 +1,21 @@
 package purelogic
 
+import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.ArrayBuffer
 
 trait Writer[-W] {
   def write(w: W): Unit
   def writeAll(elems: IterableOnce[W]): Unit
   def clear: Unit
-
   // Internal — used by recover
   private[purelogic] def snapshot: Int
   private[purelogic] def rollback(to: Int): Unit
+
+  def capture[A](body: Writer[W] ?=> A): (Vector[W @uncheckedVariance], A) = {
+    val (logs, result) = Writer(body)
+    writeAll(logs)
+    (logs, result)
+  }
 }
 
 object Writer {
@@ -34,7 +40,8 @@ object Writer {
     private[purelogic] def rollback(to: Int): Unit   = ()
   }
 
-  inline def write[W](using writer: Writer[W])(w: W): Unit                      = writer.write(w)
-  inline def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit = writer.writeAll(elems)
-  inline def clear[W](using writer: Writer[W]): Unit                            = writer.clear
+  inline def write[W](using writer: Writer[W])(w: W): Unit                                 = writer.write(w)
+  inline def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit            = writer.writeAll(elems)
+  inline def clear[W](using writer: Writer[W]): Unit                                       = writer.clear
+  inline def capture[W, A](using writer: Writer[W])(body: Writer[W] ?=> A): (Vector[W], A) = writer.capture(body)
 }
