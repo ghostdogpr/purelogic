@@ -20,15 +20,15 @@ trait Writer[-W] {
 
 object Writer {
   def apply[W, A](body: Writer[W] ?=> A): (Vector[W], A) = {
-    val buffer      = ArrayBuffer[W]()
-    given Writer[W] = new Writer[W] {
+    val buffer = ArrayBuffer[W]()
+    val writer = new Writer[W] {
       def write(w: W): Unit                          = buffer.addOne(w)
       def writeAll(elems: IterableOnce[W]): Unit     = buffer.addAll(elems)
       def clear: Unit                                = buffer.clear()
       private[purelogic] def snapshot: Int           = buffer.length
       private[purelogic] def rollback(to: Int): Unit = buffer.dropRightInPlace(buffer.length - to)
     }
-    val result      = body
+    val result = body(using writer)
     (buffer.toVector, result)
   }
 

@@ -12,31 +12,31 @@ trait State[S] {
   def getAndUpdate(f: S => S): S   = { val old = get; update(f); old }
 
   def local[A](f: S => S)(body: State[S] ?=> A): A = {
-    given State[S] = this
-    val previous   = get
+    val state    = this
+    val previous = get
     set(f(previous))
-    try body
+    try body(using state)
     finally set(previous)
   }
 
   def focus[A, B](getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B = {
-    val outer      = this
-    given State[A] = new State[A] {
+    val outer = this
+    val state = new State[A] {
       def get: A          = getFocus(outer.get)
       def set(a: A): Unit = outer.set(setFocus(outer.get, a))
     }
-    body
+    body(using state)
   }
 }
 
 object State {
   def apply[S, A](initial: S)(body: State[S] ?=> A): (S, A) = {
     var current: S = initial
-    given State[S] = new State[S] {
+    val state      = new State[S] {
       def get: S          = current
       def set(s: S): Unit = current = s
     }
-    val result     = body
+    val result     = body(using state)
     (current, result)
   }
 

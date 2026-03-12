@@ -10,10 +10,10 @@ trait Reader[+R] {
 
 object Reader {
   def apply[R, A](value: R)(body: Reader[R] ?=> A): A = {
-    given Reader[R] = new Reader[R] {
+    val reader = new Reader[R] {
       def read: R = value
     }
-    body
+    body(using reader)
   }
 
   given Reader[Unit] = new Reader[Unit] {

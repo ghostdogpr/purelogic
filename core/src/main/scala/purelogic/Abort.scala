@@ -22,10 +22,10 @@ trait Abort[-E] {
 object Abort {
   def apply[E, A](body: Abort[E] ?=> A): Either[E, A] =
     boundary[Either[E, A]] {
-      given Abort[E] = new Abort[E] {
+      val abort = new Abort[E] {
         def fail(e: E): Nothing = break(Left(e))
       }
-      Right(body)
+      Right(body(using abort))
     }
 
   given Abort[Nothing] = new Abort[Nothing] {
@@ -59,14 +59,14 @@ object Abort {
     val logSnapshot   = w.snapshot
 
     boundary[A] {
-      given Abort[E] = new Abort[E] {
+      val abort = new Abort[E] {
         def fail(e: E): Nothing = {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
           break(handler(e))
         }
       }
-      f
+      f(using abort)
     }
   }
 
@@ -77,7 +77,7 @@ object Abort {
     val logSnapshot   = w.snapshot
 
     boundary[A] {
-      given Abort[E] = new Abort[E] {
+      val a = new Abort[E] {
         def fail(e: E): Nothing = {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
@@ -87,7 +87,7 @@ object Abort {
           }
         }
       }
-      f
+      f(using a)
     }
   }
 }
