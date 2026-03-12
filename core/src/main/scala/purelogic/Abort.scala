@@ -45,10 +45,14 @@ object Abort {
     try f
     catch { case e: Throwable => abort.fail(e) }
 
-  def recover[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A        =
+  def recover[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A                                     =
     doRecover(resetLog = true)(f)(handler)
-  def recoverKeepLog[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A =
+  def recoverKeepLog[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A                              =
     doRecover(resetLog = false)(f)(handler)
+  def recoverSome[W, S, E, A](using Writer[W], State[S], Abort[E])(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]): A        =
+    doRecoverSome(resetLog = true)(f)(handler)
+  def recoverSomeKeepLog[W, S, E, A](using Writer[W], State[S], Abort[E])(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]): A =
+    doRecoverSome(resetLog = false)(f)(handler)
 
   private def doRecover[W, S, E, A](using w: Writer[W], s: State[S])(resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A): A = {
     val stateSnapshot = s.get
@@ -60,6 +64,27 @@ object Abort {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
           break(handler(e))
+        }
+      }
+      f
+    }
+  }
+
+  private def doRecoverSome[W, S, E, A](using w: Writer[W], s: State[S], abort: Abort[E])(resetLog: Boolean)(f: Abort[E] ?=> A)(
+    handler: PartialFunction[E, A]
+  ): A = {
+    val stateSnapshot = s.get
+    val logSnapshot   = w.snapshot
+
+    boundary[A] {
+      given Abort[E] = new Abort[E] {
+        def fail(e: E): Nothing = {
+          s.set(stateSnapshot)
+          if (resetLog) w.rollback(logSnapshot)
+          handler.lift(e) match {
+            case Some(value) => break(value)
+            case None        => abort.fail(e)
+          }
         }
       }
       f

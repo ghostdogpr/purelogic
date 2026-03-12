@@ -297,6 +297,70 @@ object PureLogicSpec extends ZIOSpecDefault {
           }(_ => "recovered")
         }
         assertTrue(result == Right("recovered"))
+      },
+      test("recoverSome handles matching errors and rolls back state and logs") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            set(10)
+            write("before")
+            recoverSome {
+              set(99)
+              write("inside")
+              fail("handled")
+            } { case "handled" => -1 }
+          }
+        assertTrue(
+          result == Right((10, -1)),
+          logs == Vector("before")
+        )
+      },
+      test("recoverSome re-fails when the error is not handled") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            set(10)
+            write("before")
+            recoverSome {
+              set(99)
+              write("inside")
+              fail("unhandled")
+            } { case "handled" => -1 }
+          }
+        assertTrue(
+          result == Left("unhandled"),
+          logs == Vector("before")
+        )
+      },
+      test("recoverSomeKeepLog handles matching errors and keeps logs") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            set(10)
+            write("before")
+            recoverSomeKeepLog {
+              set(99)
+              write("inside")
+              fail("handled")
+            } { case "handled" => -1 }
+          }
+        assertTrue(
+          result == Right((10, -1)),
+          logs == Vector("before", "inside")
+        )
+      },
+      test("recoverSomeKeepLog re-fails when the error is not handled and keeps logs") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            set(10)
+            write("before")
+            recoverSomeKeepLog {
+              set(99)
+              write("inside")
+              fail("unhandled")
+            } { case "handled" => -1 }
+          }
+        assertTrue(
+          result == Left("unhandled"),
+          logs == Vector("before", "inside")
+        )
       }
     ),
     // ---------------------------------------------------------------------------
