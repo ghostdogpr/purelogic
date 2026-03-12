@@ -29,7 +29,7 @@ object BattleSimExample {
     val damage = (read(_.hero.attack) - read(_.monster.defense)).max(1)
     update(s => s.copy(monsterHp = s.monsterHp - damage))
     val hp     = get(_.monsterHp)
-    write(s"  Hero attacks for $damage damage! (Monster: $hp HP)")
+    write(s"  Hero attacks for $damage damage! (Goblin: $hp HP)")
     ensureNot(hp <= 0, Outcome.Victory(get(_.turn)))
   }
 
