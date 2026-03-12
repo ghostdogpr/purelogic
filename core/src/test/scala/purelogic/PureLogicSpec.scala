@@ -38,7 +38,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       },
       test("local provides a modified environment for the block") {
         val (inner, outer) = Reader(10) {
-          val inner = Reader.local(_ + 5) {
+          val inner = local(_ + 5) {
             read
           }
           val outer = read
@@ -48,7 +48,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       },
       test("focus narrows the environment for the block") {
         val (inner, outer) = Reader(("hello", 42)) {
-          val inner = Reader.focus(_._2) {
+          val inner = focus(_._2) {
             read
           }
           val outer = read
@@ -96,7 +96,7 @@ object PureLogicSpec extends ZIOSpecDefault {
       test("local provides a modified state and restores it after the block") {
         val (finalState, (inner, outer)) =
           State(10) {
-            val inner = State.local(_ + 5) {
+            val inner = localState(_ + 5) {
               get
             }
             val outer = get
@@ -108,7 +108,7 @@ object PureLogicSpec extends ZIOSpecDefault {
         case class AppState(counter: Int, name: String)
         val (finalState, inner) =
           State(AppState(1, "initial")) {
-            focus(_.counter)((s, v) => s.copy(counter = v)) {
+            focusState(_.counter)((s, v) => s.copy(counter = v)) {
               update(_ + 5)
               get
             }

@@ -45,14 +45,15 @@ object State {
     def set(s: Unit): Unit = ()
   }
 
-  inline def get[S](using s: State[S]): S                                                                        = s.get
-  inline def get[S, A](using s: State[S])(f: S => A): A                                                          = s.get(f)
-  inline def set[S](using s: State[S])(v: S): Unit                                                               = s.set(v)
-  inline def update[S](using s: State[S])(f: S => S): Unit                                                       = s.update(f)
-  inline def updateAndGet[S](using s: State[S])(f: S => S): S                                                    = s.updateAndGet(f)
-  inline def modify[S, A](using s: State[S])(f: S => (A, S)): A                                                  = s.modify(f)
-  inline def getAndSet[S](using s: State[S])(v: S): S                                                            = s.getAndSet(v)
-  inline def getAndUpdate[S](using s: State[S])(f: S => S): S                                                    = s.getAndUpdate(f)
-  inline def local[S, A](using s: State[S])(f: S => S)(body: State[S] ?=> A): A                                  = s.local(f)(body)
-  inline def focus[S, A, B](using s: State[S])(getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B = s.focus(getFocus)(setFocus)(body)
+  inline def get[S](using s: State[S]): S                                                                             = s.get
+  inline def get[S, A](using s: State[S])(f: S => A): A                                                               = s.get(f)
+  inline def set[S](using s: State[S])(v: S): Unit                                                                    = s.set(v)
+  inline def update[S](using s: State[S])(f: S => S): Unit                                                            = s.update(f)
+  inline def updateAndGet[S](using s: State[S])(f: S => S): S                                                         = s.updateAndGet(f)
+  inline def modify[S, A](using s: State[S])(f: S => (A, S)): A                                                       = s.modify(f)
+  inline def getAndSet[S](using s: State[S])(v: S): S                                                                 = s.getAndSet(v)
+  inline def getAndUpdate[S](using s: State[S])(f: S => S): S                                                         = s.getAndUpdate(f)
+  inline def localState[S, A](using s: State[S])(f: S => S)(body: State[S] ?=> A): A                                  = s.local(f)(body)
+  inline def focusState[S, A, B](using s: State[S])(getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B =
+    s.focus(getFocus)(setFocus)(body)
 }
