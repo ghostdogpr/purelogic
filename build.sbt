@@ -28,9 +28,9 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 lazy val root = project
   .in(file("."))
   .settings(publish / skip := true)
-  .aggregate(core.jvm, core.js, examples, benchmarks)
+  .aggregate(core.jvm, core.js, core.native, examples, benchmarks)
 
-lazy val core = crossProject(JSPlatform, JVMPlatform)
+lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .in(file("core"))
   .settings(name := "purelogic")
@@ -42,6 +42,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     )
   )
   .jsSettings(Test / fork := false)
+  .nativeSettings(Test / fork := false, bspEnabled := false)
 
 lazy val examples = project
   .in(file("examples"))
