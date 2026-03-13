@@ -40,8 +40,8 @@ object Writer {
     private[purelogic] def rollback(to: Int): Unit   = ()
   }
 
-  inline def write[W](using writer: Writer[W])(w: W): Unit                                 = writer.write(w)
-  inline def writeAll[W](using writer: Writer[W])(elems: IterableOnce[W]): Unit            = writer.writeAll(elems)
+  inline def write[W](w: W)(using writer: Writer[W]): Unit                                 = writer.write(w)
+  inline def writeAll[W](elems: IterableOnce[W])(using writer: Writer[W]): Unit            = writer.writeAll(elems)
   inline def clear[W](using writer: Writer[W]): Unit                                       = writer.clear
-  inline def capture[W, A](using writer: Writer[W])(body: Writer[W] ?=> A): (Vector[W], A) = writer.capture(body)
+  inline def capture[W, A](body: Writer[W] ?=> A)(using writer: Writer[W]): (Vector[W], A) = writer.capture(body)
 }

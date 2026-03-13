@@ -10,7 +10,7 @@ object Logic {
     (log, newState, a)
   }
 
-  def simulateWith[W, S, R, E, A](using Abort[E])(mockState: S, mockEnv: R)(f: Logic[R, W, S, E, A]): A = {
+  def simulateWith[W, S, R, E, A](mockState: S, mockEnv: R)(f: Logic[R, W, S, E, A])(using Abort[E]): A = {
     val (_, either) = run(mockState, mockEnv)(f)
     either match {
       case Left(cause)       => fail(cause)
@@ -18,6 +18,6 @@ object Logic {
     }
   }
 
-  def simulate[W, S, R, E, A](using Reader[R], State[S], Abort[E])(f: Logic[R, W, S, E, A]): A =
+  def simulate[W, S, R, E, A](f: Logic[R, W, S, E, A])(using Reader[R], State[S], Abort[E]): A =
     simulateWith(get, read)(f)
 }

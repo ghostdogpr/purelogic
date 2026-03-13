@@ -32,11 +32,11 @@ object Abort {
     def fail(e: Nothing): Nothing = e
   }
 
-  inline def fail[E](using abort: Abort[E])(e: E): Nothing                                 = abort.fail(e)
-  inline def ensure[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit       = abort.ensure(condition, error)
-  inline def ensureNot[E](using abort: Abort[E])(condition: Boolean, error: => E): Unit    = abort.ensureNot(condition, error)
-  inline def extractOption[E, A](using abort: Abort[E])(option: Option[A], error: => E): A = abort.extractOption(option, error)
-  inline def extractEither[E, A](using abort: Abort[E])(either: Either[E, A]): A           = abort.extractEither(either)
+  inline def fail[E](e: E)(using abort: Abort[E]): Nothing                                 = abort.fail(e)
+  inline def ensure[E](condition: Boolean, error: => E)(using abort: Abort[E]): Unit       = abort.ensure(condition, error)
+  inline def ensureNot[E](condition: Boolean, error: => E)(using abort: Abort[E]): Unit    = abort.ensureNot(condition, error)
+  inline def extractOption[E, A](option: Option[A], error: => E)(using abort: Abort[E]): A = abort.extractOption(option, error)
+  inline def extractEither[E, A](either: Either[E, A])(using abort: Abort[E]): A           = abort.extractEither(either)
 
   def extractTry[A](t: scala.util.Try[A])(using abort: Abort[Throwable]): A =
     t.fold(abort.fail, identity)
@@ -45,16 +45,16 @@ object Abort {
     try f
     catch { case e: Throwable => abort.fail(e) }
 
-  def recover[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A                                     =
+  def recover[W, S, E, A](f: Abort[E] ?=> A)(handler: E => A)(using Writer[W], State[S]): A                                     =
     doRecover(resetLog = true)(f)(handler)
-  def recoverKeepLog[W, S, E, A](using Writer[W], State[S])(f: Abort[E] ?=> A)(handler: E => A): A                              =
+  def recoverKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: E => A)(using Writer[W], State[S]): A                              =
     doRecover(resetLog = false)(f)(handler)
-  def recoverSome[W, S, E, A](using Writer[W], State[S], Abort[E])(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]): A        =
+  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A        =
     doRecoverSome(resetLog = true)(f)(handler)
-  def recoverSomeKeepLog[W, S, E, A](using Writer[W], State[S], Abort[E])(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]): A =
+  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = false)(f)(handler)
 
-  private def doRecover[W, S, E, A](using w: Writer[W], s: State[S])(resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A): A = {
+  private def doRecover[W, S, E, A](resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using w: Writer[W], s: State[S]): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
@@ -70,9 +70,9 @@ object Abort {
     }
   }
 
-  private def doRecoverSome[W, S, E, A](using w: Writer[W], s: State[S], abort: Abort[E])(resetLog: Boolean)(f: Abort[E] ?=> A)(
-    handler: PartialFunction[E, A]
-  ): A = {
+  private def doRecoverSome[W, S, E, A](
+    resetLog: Boolean
+  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
