@@ -1,5 +1,13 @@
 val scala3Version = "3.3.7"
 
+// dependencies for tests and benchmarks
+val catsVersion       = "2.13.0"
+val catsMtlVersion    = "1.6.0"
+val zioPreludeVersion = "1.0.0-RC46"
+val kyoVersion        = "1.0-RC1"
+val turboliftVersion  = "0.126.0"
+val zioVersion        = "2.1.24"
+
 inThisBuild(
   List(
     scalaVersion := scala3Version,
@@ -20,7 +28,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 lazy val root = project
   .in(file("."))
   .settings(publish / skip := true)
-  .aggregate(core.jvm, core.js, examples)
+  .aggregate(core.jvm, core.js, examples, benchmarks)
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
@@ -29,8 +37,8 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio-test"     % "2.1.24" % Test,
-      "dev.zio" %%% "zio-test-sbt" % "2.1.24" % Test
+      "dev.zio" %%% "zio-test"     % zioVersion % Test,
+      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
     )
   )
   .jsSettings(Test / fork := false)
@@ -40,6 +48,27 @@ lazy val examples = project
   .settings(name := "purelogic-examples")
   .settings(commonSettings)
   .settings(publish / skip := true)
+  .dependsOn(core.jvm)
+
+lazy val benchmarks = project
+  .in(file("benchmarks"))
+  .enablePlugins(JmhPlugin)
+  .settings(name := "purelogic-benchmarks")
+  .settings(commonSettings)
+  .settings(scalaVersion := "3.8.2")
+  .settings(
+    scalacOptions := scalacOptions.value.filterNot(_ == "-Ykind-projector").filterNot(_ == "-Xfatal-warnings") :+ "-Xkind-projector"
+  )
+  .settings(publish / skip := true)
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio"            %% "zio-prelude"    % zioPreludeVersion,
+      "org.typelevel"      %% "cats-core"      % catsVersion,
+      "org.typelevel"      %% "cats-mtl"       % catsMtlVersion,
+      "io.getkyo"          %% "kyo-core"       % kyoVersion,
+      "io.github.marcinzh" %% "turbolift-core" % turboliftVersion
+    )
+  )
   .dependsOn(core.jvm)
 
 lazy val commonSettings = Def.settings(
