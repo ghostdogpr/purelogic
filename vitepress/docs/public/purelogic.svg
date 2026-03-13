@@ -1,0 +1,12 @@
+<svg width="260" height="260" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Lightning bolt in gold (behind) -->
+  <polygon points="148,15 95,125 135,125 88,245 165,135 125,135" fill="#E6AA1E"/>
+
+  <!-- Scala curved bars in red (on top) -->
+  <g transform="translate(95,50)" fill="#CB4239">
+    <path d="M0 0 h70a20 20 0 0 1 0 40h-70a20 20 0 0 1 0-40z"/>
+    <path d="M0 60 h70a20 20 0 0 1 0 40h-70a20 20 0 0 1 0-40z"/>
+    <path d="M0 120 h70a20 20 0 0 1 0 40h-70a20 20 0 0 1 0-40z"/>
+  </g>
+</svg>
