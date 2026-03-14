@@ -53,9 +53,9 @@ Let's break down what's happening here.
 
 Using all these methods requires some `given` instances to be in scope. Those are provided automatically by the `Logic.run` function.
 
-This function requires the starting state `S` and the reader `R` to be provided, and returns a result of type `(Vector[W], Either[E, (S, A)])`:
-- `Vector[W]` is the list of values accumulated via `write`
-- `Either[E, (S, A)]` is the result of the computation: it either fails with an error of type `E` or succeeds with a tuple of the final state `S` and the return value `A`
+This function requires the starting `Account` and the `Config` to be provided, and returns a result of type `(Vector[String], Either[String, (Account, Unit)])`:
+- `Vector[String]` is the list of values accumulated via `write`
+- `Either[String, (Account, Unit)]` is the result of the computation: it either fails with an error of type `String` or succeeds with a tuple of the final `Account` and the return value `Unit`
 
 The beauty of it? We didn't need to pass any parameters around. Let's now rewind and understand how it really works.
 
@@ -132,6 +132,17 @@ Logic.run(initialState, reader)(f)
 // is equivalent to
 Reader(reader)(Writer(Abort(State(initialState)(f))))
 ```
+
+::: tip
+Note that by changing the order of the wrappers, you can change the order of the capabilities being applied, which affects the return type of the final computation.
+- `Reader.apply` returns just the result `A`
+- `Writer.apply` returns a tuple `(Vector[W], A)`
+- `State.apply` returns a tuple `(S, A)`
+- `Abort.apply` returns an `Either[E, A]`
+
+Because of the order above, `Logic.run` returns a tuple `(Vector[W], Either[E, (S, A)])`. But you can change it, for example if you move the `Writer` inside the `Abort`, the `Vector[W]` will be inside the `Either`.
+:::
+
 
 ## Next steps
 
