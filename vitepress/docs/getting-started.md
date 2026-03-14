@@ -141,10 +141,14 @@ Note that by changing the order of the wrappers, you can change the order of the
 
 Because of the order above, `Logic.run` returns a tuple `(Vector[W], Either[E, (S, A)])`. But you can change it, for example if you move the `Writer` inside the `Abort`, the `Vector[W]` will be inside the `Either`.
 
+For more details about each of the capabilities, check out the [Capabilities](capabilities.md) page.
+
 ## Next steps
 
 Make sure to read the [Why PureLogic?](why-purelogic.md) page to understand when this library is useful and see a comparison with traditional monadic approaches.
 
-For more details about each of the capabilities, check out the [Capabilities](capabilities.md) page.
-
 Check out the [examples](https://github.com/ghostdogpr/purelogic/tree/master/examples/src/main/scala/examples) in GitHub to see how to use the library in practice.
+
+If you want to know more about direct-style effects using capabilities, I recommend these two blog posts:
+- [Effects as Capabilities](https://nrinaudo.github.io/articles/capabilities.html) by Nicolas Rinaudo
+- [The Effect Pattern and Effect Systems in Scala](https://rockthejvm.com/articles/the-effect-pattern) by Riccardo Cardin
