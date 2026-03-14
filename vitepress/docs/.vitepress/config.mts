@@ -20,11 +20,15 @@ export default defineConfig({
         text: 'Documentation',
         items: [
           { text: 'Getting started', link: '/getting-started' },
-          { text: 'Reader', link: '/reader' },
-          { text: 'Writer', link: '/writer' },
-          { text: 'State', link: '/state' },
-          { text: 'Abort', link: '/abort' },
-          { text: 'Combining effects', link: '/combining-effects' },
+          { text: 'Why PureLogic?', link: '/why-purelogic' },
+          {
+            text: 'Capabilities', link: '/capabilities', items: [
+              { text: 'Reader', link: '/reader' },
+              { text: 'Writer', link: '/writer' },
+              { text: 'State', link: '/state' },
+              { text: 'Abort', link: '/abort' },
+            ]
+          }
         ]
       },
       {
