@@ -133,7 +133,6 @@ Logic.run(initialState, reader)(f)
 Reader(reader)(Writer(Abort(State(initialState)(f))))
 ```
 
-::: tip
 Note that by changing the order of the wrappers, you can change the order of the capabilities being applied, which affects the return type of the final computation.
 - `Reader.apply` returns just the result `A`
 - `Writer.apply` returns a tuple `(Vector[W], A)`
@@ -141,8 +140,6 @@ Note that by changing the order of the wrappers, you can change the order of the
 - `Abort.apply` returns an `Either[E, A]`
 
 Because of the order above, `Logic.run` returns a tuple `(Vector[W], Either[E, (S, A)])`. But you can change it, for example if you move the `Writer` inside the `Abort`, the `Vector[W]` will be inside the `Either`.
-:::
-
 
 ## Next steps
 
