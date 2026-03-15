@@ -57,7 +57,7 @@ This function requires the starting `Account` and the `Config` to be provided, a
 - `Vector[String]` is the list of values accumulated via `write`
 - `Either[String, (Account, Unit)]` is the result of the computation: it either fails with an error of type `String` or succeeds with a tuple of the final `Account` and the return value `Unit`
 
-The beauty of it? We didn't need to pass any parameters around. Let's now rewind and understand how it really works.
+The beauty of it? We **didn't need to pass any parameters around**. Let's now rewind and understand how it really works.
 
 ## How it works
 
@@ -82,9 +82,9 @@ This is where **PureLogic** comes in. Let's change the `Config` example:
 ```scala
 def doSomething(a: A)(using Reader[Config]): Result = ???
 ```
-Instead of an explicit `Config` parameter, we now have a `Reader` parameter that is passed implicitly. Anywhere inside `doSomething` (or any function that has a `Reader` parameter), we can now use the `read` function to access the `Config` object (as well as convenient helpers like `read(_.someFieldInsideConfig)`).
+Instead of an explicit `Config` parameter, we now have a `Reader` parameter that is **passed implicitly**. Anywhere inside `doSomething` (or any function that has a `Reader` parameter), we can now use the `read` function to access the `Config` object (as well as convenient helpers like `read(_.someFieldInsideConfig)`).
 
-Starting with Scala 3, there is a different notation you can use for these parameters: context functions.
+Starting with Scala 3, there is a different notation you can use for these parameters: **context functions**.
 ```scala
 def doSomething(a: A): Reader[Config] ?=> Result = ???
 ```
