@@ -4,7 +4,6 @@
 
 `State` and `Writer` use **mutable variables** internally, scoped to the `Logic.run` (or `State.apply` / `Writer.apply`) call. They are **not designed to be shared across threads**. This is fine because PureLogic is meant for pure domain logic, which is typically single-threaded. If you need concurrency, use an effect system like ZIO or Cats Effect at the boundary and call into PureLogic from there.
 
-
 ## How does `Abort` work under the hood?
 
 `Abort` uses Scala 3's `boundary`/`break` mechanism, which compiles down to a **local throw/catch**. This means aborting is very fast — there is no `Either` wrapping at each step like in monadic approaches. The `Either` is only constructed once, at the `Abort.apply` boundary.

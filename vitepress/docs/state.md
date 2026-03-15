@@ -82,11 +82,11 @@ val oldState: Counter = getAndUpdate(c => Counter(c.value + 1))
 
 ### `modify`
 
-Computes a **result and a new state** from the current state in one step:
+Computes a **return value and a new state** from the current state in one step:
 
 ```scala
-val popped: Int = modify { stack =>
-  (stack.items.head, Stack(stack.items.tail))
+val previous: Counter = modify { c =>
+  (c, Counter(c.value + 1))
 }
 ```
 

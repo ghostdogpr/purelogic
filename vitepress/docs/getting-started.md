@@ -15,6 +15,7 @@ Add the following dependency to your `build.sbt` (use `%%` for Scala JVM, `%%%` 
 ```scala
 libraryDependencies += "com.github.ghostdogpr" %% "purelogic" % "0.1.0"
 ```
+
 For most of the library, you will only need a single import:
 
 ```scala

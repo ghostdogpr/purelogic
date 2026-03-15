@@ -54,7 +54,7 @@ def program(using account: State[Account], cart: State[Cart]): Unit = {
 }
 ```
 
-This is essential when you have **multiple capabilities of the same type** with different type parameters. Without naming, the compiler wouldn't know which `State` to use when you call `get`.
+This is essential when you have **two capabilities with the same type** (e.g. two `State[Int]`), where the compiler can't disambiguate on its own. It's also useful for **readability** when you have several capabilities with different type parameters.
 
 ## The `Logic` type alias
 
