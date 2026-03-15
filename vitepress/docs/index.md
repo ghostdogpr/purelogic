@@ -20,7 +20,7 @@ features:
   - title: Reader + Writer + State + Abort
     details: Combine these 4 foundational effects to write your pure domain logic.
   - title: Direct-style via context functions
-    details: No monads, no for-comprehensions, no syntactical overhead.
+    details: No monads, no for-comprehensions, no syntactical overhead. Useful stack traces.
   - title: Lightning fast
     details: Insanely faster than monad-based alternatives. Allocations are reduced to a minimum.
 ---

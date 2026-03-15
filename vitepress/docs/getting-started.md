@@ -6,7 +6,7 @@ It is designed to be **monad-free**, meaning that effects like `Reader`, `Writer
 
 It provides an **opinionated way to write pure domain logic** in Scala, using a limited set of primitives.
 
-It is available for Scala 3.3.x LTS and later versions for Scala JVM, Scala.js, and Scala Native.
+It has **zero dependencies** and is available for Scala 3.3.x LTS and later versions for Scala JVM, Scala.js, and Scala Native.
 
 ## Installation
 
