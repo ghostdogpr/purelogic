@@ -9,9 +9,7 @@ import cats.syntax.all.*
 import kyo.{Scope as _, *}
 import org.openjdk.jmh.annotations.*
 import turbolift.!!
-import turbolift.Extensions.*
-import turbolift.effects.{ErrorEffectExt, ReaderEffect, StateEffect, WriterEffectExt}
-import turbolift.typeclass.{AccumZero, One}
+import turbolift.effects.{ErrorEffect, ReaderEffect, StateEffect, WriterEffectK}
 import zio.ZEnvironment
 import zio.prelude.fx.ZPure
 
@@ -156,12 +154,12 @@ class RwstBench {
   private object TL {
     case object R extends ReaderEffect[Int]
     case object S extends StateEffect[Int]
-    case object W extends WriterEffectExt[Vector[Int], Int]
-    case object E extends ErrorEffectExt[Throwable, Throwable]
+    case object W extends WriterEffectK[Vector, Int]
+    case object E extends ErrorEffect[Throwable]
   }
 
   private def turboliftProgram(n: Int) = {
-    val loop = (0 until n).foreachEff { _ =>
+    val loop = !!.repeat(n)(
       for {
         r   <- TL.R.ask
         s   <- TL.S.get
@@ -171,12 +169,9 @@ class RwstBench {
         _   <- TL.W.tell(next)
         _   <- if (false) TL.E.raise(boom) else !!.unit
       } yield ()
-    }
+    )
     loop.flatMap(_ => TL.S.get)
   }
-
-  private given AccumZero[Vector[Int], Int] = AccumZero.forVector[Int]
-  private given One[Throwable, Throwable]   = One.instance((t: Throwable) => t)
 
   @Benchmark
   def turbolift(): Int = {
