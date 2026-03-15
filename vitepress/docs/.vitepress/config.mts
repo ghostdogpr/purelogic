@@ -11,6 +11,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Documentation', link: '/getting-started' },
       { text: 'FAQ', link: '/faq' },
+      { text: 'About', link: '/about' },
     ],
 
     logo: '/purelogic.svg',
@@ -33,6 +34,9 @@ export default defineConfig({
       },
       {
         text: 'FAQ', link: '/faq'
+      },
+      {
+        text: 'About', link: '/about'
       }
     ],
 
