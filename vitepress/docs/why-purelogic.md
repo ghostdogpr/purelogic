@@ -54,6 +54,13 @@ This simplicity compounds as your code grows:
 - **Better type inference**: Monadic code often requires explicit type annotations to help the compiler, especially with monad transformers. Direct style rarely does.
 - **Lower learning curve**: New team members don't need to learn monad transformers, type class hierarchies, or the intricacies of `flatMap` composition.
 
+### Trade-offs
+
+There are two trade-offs to be aware of when choosing direct style over monads:
+
+- **Referential transparency**: Direct-style code that uses capabilities is not referentially transparent: you cannot freely reorder or deduplicate expressions. My personal opinion is that it won't matter much in practice for this kind of pure logic code.
+- **Trampolining**: Monadic code gets trampolining for free (each `flatMap` returns a data structure instead of recursing), so deeply recursive monadic programs won't overflow the stack. With direct style, you need to make recursive functions `@tailrec` or restructure them to avoid deep recursion.
+
 ### Performance
 
 Because PureLogic operations compile down to simple reads and writes on mutable variables behind the scenes (safely scoped by `Logic.run`), there is no overhead from monadic wrapping, `flatMap` chains, or heap-allocated closures.
