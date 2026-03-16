@@ -49,6 +49,7 @@ lazy val examples = project
   .settings(name := "purelogic-examples")
   .settings(commonSettings)
   .settings(publish / skip := true)
+  .settings(run / fork := true)
   .dependsOn(core.jvm)
 
 lazy val benchmarks = project
