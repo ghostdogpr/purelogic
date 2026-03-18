@@ -78,6 +78,36 @@ val result: Int = Abort.attempt {
 }
 ```
 
+## Validation
+
+`validate` runs **all** blocks, accumulating errors instead of short-circuiting on the first failure. If any blocks fail, it aborts with a **non-empty list** of all collected errors.
+
+```scala
+def validateUser(name: String, age: Int)(using Abort[::[String]]): Unit =
+  Abort.validate(
+    ensure(name.nonEmpty, "Name is required"),
+    ensure(age >= 0, "Age must be non-negative")
+  )
+
+val result: Either[::[String], Unit] = Abort {
+  validateUser("", -1)
+}
+// result: Left(::(Name is required, List(Age must be non-negative)))
+```
+
+### Syntax extension
+
+Importing `purelogic.syntax.*` adds a **`.validateAll`** method on `Iterable`:
+
+```scala
+import purelogic.syntax.*
+
+def validateUsers(users: List[User])(using Abort[::[String]]): Unit =
+  users.validateAll { user =>
+    ensure(user.name.nonEmpty, s"User ${user.id} has no name")
+  }
+```
+
 ## Recovery
 
 `Abort` provides several functions to **catch and handle errors** within a computation. Recovery **rolls back** state and writes to the point before the failed block.

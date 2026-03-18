@@ -30,4 +30,14 @@ object syntax {
     inline def orFail(using Abort[Throwable]): A =
       Abort.extractTry(t)
   }
+
+  extension [A](a: Iterable[A]) {
+
+    /**
+      * Applies a validation function to each element, accumulating all errors instead of short-circuiting on the first
+      * failure. If any elements fail, aborts with a non-empty list of all collected errors.
+      */
+    inline def validateAll[E](f: A => Abort[::[E]] ?=> Any)(using abort: Abort[::[E]]): Unit =
+      Abort.validate(a.map(f).toSeq*)
+  }
 }

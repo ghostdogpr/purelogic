@@ -1,7 +1,9 @@
 package purelogic
 
+import scala.collection.mutable.ArrayBuffer
 import scala.util.boundary
 import scala.util.boundary.break
+import scala.util.control.NoStackTrace
 
 /**
   * Short-circuits a computation with an error of type `E`.
@@ -61,6 +63,14 @@ object Abort {
     */
   given Abort[Nothing] = new Abort[Nothing] {
     def fail(e: Nothing): Nothing = e
+  }
+
+  /**
+    * Derives an `Abort[E]` from an `Abort[::[E]]` by wrapping single errors into a singleton list. Enables seamless
+    * nesting of `validate` blocks.
+    */
+  given [E](using a: Abort[::[E]]): Abort[E] = new Abort[E] {
+    def fail(e: E): Nothing = a.fail(::(e, Nil))
   }
 
   /**
@@ -126,6 +136,30 @@ object Abort {
     */
   def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = false)(f)(handler)
+
+  private case object ValidationAbort extends Exception with NoStackTrace
+
+  /**
+    * Runs all blocks, accumulating errors instead of short-circuiting on the first failure. If any blocks fail, aborts
+    * with a non-empty list of all collected errors.
+    */
+  def validate[E](validations: (Abort[::[E]] ?=> Any)*)(using abort: Abort[::[E]]): Unit = {
+    val buffer = ArrayBuffer[E]()
+    val abort  = new Abort[::[E]] {
+      def fail(es: ::[E]): Nothing = {
+        buffer.addAll(es)
+        throw ValidationAbort
+      }
+    }
+    validations.foreach { validation =>
+      try validation(using abort)
+      catch { case ValidationAbort => }
+    }
+    buffer.toList match {
+      case Nil             => ()
+      case list @ ::(_, _) => fail(list)
+    }
+  }
 
   private def doRecover[W, S, E, A](resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using w: Writer[W], s: State[S]): A = {
     val stateSnapshot = s.get

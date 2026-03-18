@@ -366,6 +366,67 @@ object PureLogicSpec extends ZIOSpecDefault {
       }
     ),
     // ---------------------------------------------------------------------------
+    // Validation
+    // ---------------------------------------------------------------------------
+    suite("Validation")(
+      test("validate passes when all blocks succeed") {
+        val result = Abort {
+          Abort.validate(
+            ensure(true, "a"),
+            ensure(true, "b")
+          )
+        }
+        assertTrue(result == Right(()))
+      },
+      test("validate collects all errors") {
+        val result: Either[::[String], Unit] = Abort {
+          Abort.validate(
+            fail("a"),
+            ensure(true, "b"),
+            fail("c")
+          )
+        }
+        assertTrue(result == Left(::("a", List("c"))))
+      },
+      test("validate collects single error") {
+        val result: Either[::[String], Unit] = Abort {
+          Abort.validate(
+            ensure(false, "only-error")
+          )
+        }
+        assertTrue(result == Left(::("only-error", Nil)))
+      },
+      test("validate syntax extension works on Iterable") {
+        val result: Either[::[String], Unit] = Abort {
+          List(1, -2, 3, -4).validateAll { n =>
+            ensure(n > 0, s"$n is negative")
+          }
+        }
+        assertTrue(result == Left(::("-2 is negative", List("-4 is negative"))))
+      },
+      test("nested validate flattens errors") {
+        val result: Either[::[String], Unit] = Abort {
+          Abort.validate(
+            fail("a"),
+            Abort.validate(
+              fail("b"),
+              fail("c")
+            ),
+            fail("d")
+          )
+        }
+        assertTrue(result == Left(::("a", List("b", "c", "d"))))
+      },
+      test("validate syntax extension passes when all elements are valid") {
+        val result: Either[::[String], Unit] = Abort {
+          List(1, 2, 3).validateAll { n =>
+            ensure(n > 0, s"$n is negative")
+          }
+        }
+        assertTrue(result == Right(()))
+      }
+    ),
+    // ---------------------------------------------------------------------------
     // Logic.run
     // ---------------------------------------------------------------------------
     suite("Logic.run")(
