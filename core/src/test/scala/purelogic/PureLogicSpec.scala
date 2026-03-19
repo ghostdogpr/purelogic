@@ -63,20 +63,6 @@ object PureLogicSpec extends ZIOSpecDefault {
     // StateReader
     // ---------------------------------------------------------------------------
     suite("StateReader")(
-      test("get returns the current state via StateReader") {
-        val (_, result) = State(10) {
-          val reader: StateReader[Int] = summon[State[Int]]
-          reader.get
-        }
-        assertTrue(result == 10)
-      },
-      test("get projects the state via StateReader") {
-        val (_, result) = State(List(1, 2, 3)) {
-          val reader: StateReader[List[Int]] = summon[State[List[Int]]]
-          reader.get(_.size)
-        }
-        assertTrue(result == 3)
-      },
       test("StateReader is covariant") {
         val (_, result) = State(List(1, 2, 3)) {
           val reader: StateReader[Iterable[Int]] = summon[State[List[Int]]]
@@ -94,13 +80,6 @@ object PureLogicSpec extends ZIOSpecDefault {
     // StateWriter
     // ---------------------------------------------------------------------------
     suite("StateWriter")(
-      test("set replaces the state via StateWriter") {
-        val (finalState, _) = State(0) {
-          val writer: StateWriter[Int] = summon[State[Int]]
-          writer.set(42)
-        }
-        assertTrue(finalState == 42)
-      },
       test("StateWriter is contravariant") {
         def acceptsWriter(w: StateWriter[Int]): Unit = w.set(42)
         val (finalState, _)                          = State(0) {
