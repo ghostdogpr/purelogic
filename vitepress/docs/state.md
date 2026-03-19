@@ -2,6 +2,33 @@
 
 `State[S]` provides **mutable state** scoped to a computation. You can read and update a value of type `S` without passing it around explicitly.
 
+`State[S]` extends two sub-traits that let you **restrict access** to only the operations a function needs:
+
+- `StateReader[S]` — **read-only** access (`get`)
+- `StateWriter[S]` — **write-only** access (`set`)
+
+Using these narrower traits in your function signatures makes it clear which parts of your code observe vs. modify the state, and prevents accidental writes in read-only contexts.
+
+```scala
+import purelogic.*
+
+def readOnly(using StateReader[Counter]): Int =
+  get(_.value)
+
+def writeOnly(using StateWriter[Counter]): Unit =
+  set(Counter(0))
+
+def readWrite(using State[Counter]): Int = {
+  val v = get(_.value)
+  set(Counter(v + 1))
+  v
+}
+```
+
+::: tip Variance
+`StateReader` is **covariant** (`StateReader[+S]`) and `StateWriter` is **contravariant** (`StateWriter[-S]`), so a `State[Dog]` can be passed where a `StateReader[Animal]` or `StateWriter[Pug]` is expected.
+:::
+
 ## Basic usage
 
 ```scala

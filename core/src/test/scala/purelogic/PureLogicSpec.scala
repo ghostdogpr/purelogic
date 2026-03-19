@@ -60,6 +60,41 @@ object PureLogicSpec extends ZIOSpecDefault {
       }
     ),
     // ---------------------------------------------------------------------------
+    // StateReader
+    // ---------------------------------------------------------------------------
+    suite("StateReader")(
+      test("StateReader is covariant") {
+        val (_, result) = State(List(1, 2, 3)) {
+          val reader: StateReader[Iterable[Int]] = summon[State[List[Int]]]
+          reader.get(_.size)
+        }
+        assertTrue(result == 3)
+      },
+      test("function requiring only StateReader works with State") {
+        def readOnly(using StateReader[Int]): Int = get + 1
+        val (finalState, result)                  = State(10)(readOnly)
+        assertTrue(result == 11, finalState == 10)
+      }
+    ),
+    // ---------------------------------------------------------------------------
+    // StateWriter
+    // ---------------------------------------------------------------------------
+    suite("StateWriter")(
+      test("StateWriter is contravariant") {
+        def acceptsWriter(w: StateWriter[Int]): Unit = w.set(42)
+        val (finalState, _)                          = State(0) {
+          val state: State[Int] = summon[State[Int]]
+          acceptsWriter(state) // State[Int] <: StateWriter[Int]
+        }
+        assertTrue(finalState == 42)
+      },
+      test("function requiring only StateWriter works with State") {
+        def writeOnly(using StateWriter[Int]): Unit = set(99)
+        val (finalState, _)                         = State(0)(writeOnly)
+        assertTrue(finalState == 99)
+      }
+    ),
+    // ---------------------------------------------------------------------------
     // State
     // ---------------------------------------------------------------------------
     suite("State")(
