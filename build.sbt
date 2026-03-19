@@ -37,8 +37,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio-test"     % zioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
+      "org.scalameta" %%% "munit" % "1.2.4" % Test
     )
   )
   .jsSettings(Test / fork := false)
@@ -59,7 +58,10 @@ lazy val benchmarks = project
   .settings(commonSettings)
   .settings(scalaVersion := "3.8.2")
   .settings(
-    scalacOptions := scalacOptions.value.filterNot(_ == "-Ykind-projector").filterNot(_ == "-Xfatal-warnings") :+ "-Xkind-projector"
+    scalacOptions := scalacOptions.value
+      .filterNot(_ == "-Ykind-projector")
+      .filterNot(_ == "-Xfatal-warnings")
+      .filterNot(_ == "-language:experimental.captureChecking") :+ "-Xkind-projector"
   )
   .settings(publish / skip := true)
   .settings(

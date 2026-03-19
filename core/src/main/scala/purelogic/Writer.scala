@@ -1,7 +1,6 @@
 package purelogic
 
 import scala.annotation.unchecked.uncheckedVariance
-import scala.caps.SharedCapability
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -12,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
   * @tparam W
   *   the type of values to accumulate
   */
-trait Writer[-W] extends SharedCapability {
+trait Writer[-W] extends scala.caps.SharedCapability {
 
   /**
     * Appends a single value to the log.
@@ -65,6 +64,7 @@ object Writer {
   /**
     * Default `Writer[Nothing]` instance that discards all writes.
     */
+  @scala.annotation.nowarn
   given Writer[Nothing] = new Writer[Nothing] {
     def write(w: Nothing): Unit                      = ()
     def writeAll(elems: IterableOnce[Nothing]): Unit = ()

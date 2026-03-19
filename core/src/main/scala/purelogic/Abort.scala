@@ -1,6 +1,5 @@
 package purelogic
 
-import scala.caps.SharedCapability
 import scala.util.boundary
 import scala.util.boundary.break
 
@@ -12,7 +11,7 @@ import scala.util.boundary.break
   * @tparam E
   *   the type of error
   */
-trait Abort[-E] extends SharedCapability {
+trait Abort[-E] extends scala.caps.SharedCapability {
 
   /**
     * Aborts the computation with the given error.
@@ -60,6 +59,7 @@ object Abort {
   /**
     * Default `Abort[Nothing]` instance that can never fail.
     */
+  @scala.annotation.nowarn
   given Abort[Nothing] = new Abort[Nothing] {
     def fail(e: Nothing): Nothing = e
   }
@@ -132,15 +132,20 @@ object Abort {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
-    boundary[A] {
+    val result = boundary[Either[E, A]] {
       val abort = new Abort[E] {
         def fail(e: E): Nothing = {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
-          break(handler(e))
+          break(Left(e))
         }
       }
-      f(using abort)
+      Right(f(using abort))
+    }
+
+    result match {
+      case Right(value) => value
+      case Left(e)      => handler(e)
     }
   }
 
@@ -150,18 +155,24 @@ object Abort {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
-    boundary[A] {
+    val result = boundary[Either[E, A]] {
       val a = new Abort[E] {
         def fail(e: E): Nothing = {
           s.set(stateSnapshot)
           if (resetLog) w.rollback(logSnapshot)
-          handler.lift(e) match {
-            case Some(value) => break(value)
-            case None        => abort.fail(e)
-          }
+          break(Left(e))
         }
       }
-      f(using a)
+      Right(f(using a))
+    }
+
+    result match {
+      case Right(value) => value
+      case Left(e)      =>
+        handler.lift(e) match {
+          case Some(value) => value
+          case None        => abort.fail(e)
+        }
     }
   }
 }

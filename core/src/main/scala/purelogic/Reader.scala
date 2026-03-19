@@ -1,7 +1,5 @@
 package purelogic
 
-import scala.caps.SharedCapability
-
 /**
   * Read-only access to a value of type `R`.
   *
@@ -10,7 +8,7 @@ import scala.caps.SharedCapability
   * @tparam R
   *   the type of the value to read
   */
-trait Reader[+R] extends SharedCapability {
+trait Reader[+R] extends scala.caps.SharedCapability {
 
   /**
     * Returns the current reader value.
@@ -48,6 +46,7 @@ object Reader {
   /**
     * Default `Reader[Unit]` instance that always returns `()`.
     */
+  @scala.annotation.nowarn
   given Reader[Unit] = new Reader[Unit] {
     def read: Unit = ()
   }

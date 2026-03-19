@@ -1,7 +1,5 @@
 package purelogic
 
-import scala.caps.SharedCapability
-
 /**
   * Read-only access to a mutable state of type `S`.
   *
@@ -10,7 +8,7 @@ import scala.caps.SharedCapability
   * @tparam S
   *   the type of the state
   */
-trait StateReader[+S] extends SharedCapability {
+trait StateReader[+S] extends scala.caps.SharedCapability {
 
   /**
     * Returns the current state.
@@ -31,7 +29,7 @@ trait StateReader[+S] extends SharedCapability {
   * @tparam S
   *   the type of the state
   */
-trait StateWriter[-S] extends SharedCapability {
+trait StateWriter[-S] extends scala.caps.SharedCapability {
 
   /**
     * Replaces the state with a new value.
@@ -90,10 +88,12 @@ trait State[S] extends StateReader[S] with StateWriter[S] {
     * outer state.
     */
   def focus[A, B](getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B = {
-    val outer = this
-    val state = new State[A] {
-      def get: A          = getFocus(outer.get)
-      def set(a: A): Unit = outer.set(setFocus(outer.get, a))
+    val outer     = this
+    var cachedGet = getFocus
+    var cachedSet = setFocus
+    val state     = new State[A] {
+      def get: A          = cachedGet(outer.get)
+      def set(a: A): Unit = outer.set(cachedSet(outer.get, a))
     }
     body(using state)
   }
@@ -118,6 +118,7 @@ object State {
   /**
     * Default `State[Unit]` instance that does nothing.
     */
+  @scala.annotation.nowarn
   given State[Unit] = new State[Unit] {
     def get: Unit          = ()
     def set(s: Unit): Unit = ()
