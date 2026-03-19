@@ -1,6 +1,7 @@
 package purelogic
 
 export Abort.*
+export Loop.*
 export Reader.*
 export State.*
 export Writer.*

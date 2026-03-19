@@ -466,6 +466,357 @@ object PureLogicSpec extends ZIOSpecDefault {
       }
     ),
     // ---------------------------------------------------------------------------
+    // Loop
+    // ---------------------------------------------------------------------------
+    suite("Loop")(
+      test("done exits the loop with a value") {
+        val result = Loop {
+          done(42)
+        }
+        assertTrue(result == 42)
+      },
+      test("loop repeats until done is returned") {
+        var i      = 0
+        val result = Loop {
+          i += 1
+          if (i == 5) done(i)
+          else continue
+        }
+        assertTrue(result == 5, i == 5)
+      },
+      test("continue proceeds to the next iteration") {
+        var i      = 0
+        var sum    = 0
+        val result = Loop {
+          i += 1
+          if (i % 2 == 0) continue
+          else {
+            sum += i
+            if (i >= 9) done(sum)
+            else continue
+          }
+        }
+        assertTrue(result == 1 + 3 + 5 + 7 + 9)
+      },
+      test("loop works with State") {
+        val (finalState, result) = State(0) {
+          Loop {
+            update(_ + 1)
+            if (get >= 3) done("finished")
+            else continue
+          }
+        }
+        assertTrue(result == "finished", finalState == 3)
+      },
+      test("loop works with Writer") {
+        val (logs, result) = Writer {
+          Loop {
+            write("tick")
+            done(99)
+          }
+        }
+        assertTrue(result == 99, logs == Vector("tick"))
+      },
+      test("loop works with all capabilities") {
+        val (logs, result) =
+          Logic.run(0, 10) {
+            Loop {
+              val step = read
+              update(_ + step)
+              write(s"state=$get")
+              if (get >= 30) done(s"done at $get")
+              else continue
+            }
+          }
+        assertTrue(
+          result == Right((30, "done at 30")),
+          logs == Vector("state=10", "state=20", "state=30")
+        )
+      },
+      test("iterate models a tail-recursive function") {
+        val (_, result) = Loop.iterate((10, 1)) { case (n, acc) =>
+          if (n <= 1) done((n, acc))
+          else continue((n - 1, n * acc))
+        }
+        assertTrue(result == 3628800)
+      },
+      test("iterate fibonacci") {
+        val (_, a, _) = Loop.iterate((10, 0, 1)) { case (n, a, b) =>
+          if (n == 0) done((n, a, b))
+          else continue((n - 1, b, a + b))
+        }
+        assertTrue(a == 55)
+      },
+      test("iterate simple counter") {
+        val result = Loop.iterate(0) { n =>
+          if (n >= 10) done(n)
+          else continue(n + 1)
+        }
+        assertTrue(result == 10)
+      },
+      test("iterate with Writer accumulates along the way") {
+        val (logs, result) = Writer {
+          Loop.iterate(1) { n =>
+            write(s"step=$n")
+            if (n >= 4) done(n)
+            else continue(n + 1)
+          }
+        }
+        assertTrue(
+          result == 4,
+          logs == Vector("step=1", "step=2", "step=3", "step=4")
+        )
+      },
+      test("iterate with State") {
+        val (finalState, result) = State(Vector.empty[Int]) {
+          Loop.iterate(1) { n =>
+            update[Vector[Int]](_ :+ n)
+            if (n >= 5) done(n)
+            else continue(n + 1)
+          }
+        }
+        assertTrue(
+          result == 5,
+          finalState == Vector(1, 2, 3, 4, 5)
+        )
+      },
+      test("foreach iterates over all elements") {
+        val (logs, _) = Writer {
+          Loop.foreach(List(1, 2, 3)) { n =>
+            write(s"item=$n")
+            continue
+          }
+        }
+        assertTrue(logs == Vector("item=1", "item=2", "item=3"))
+      },
+      test("foreach done exits early") {
+        var seen = 0
+        Loop.foreach(1 to 100) { n =>
+          seen = n
+          if (n == 5) done(())
+          else continue
+        }
+        assertTrue(seen == 5)
+      },
+      test("foreach continue skips elements") {
+        val (logs, _) = Writer {
+          Loop.foreach(1 to 6) { n =>
+            if (n % 2 == 0) continue
+            else { write(s"odd=$n"); continue }
+          }
+        }
+        assertTrue(logs == Vector("odd=1", "odd=3", "odd=5"))
+      },
+      test("foreach with State") {
+        val (finalState, _) = State(0) {
+          Loop.foreach(List(10, 20, 30)) { n =>
+            update[Int](_ + n)
+            continue
+          }
+        }
+        assertTrue(finalState == 60)
+      },
+      test("fold sums a list") {
+        val result = Loop.fold(List(1, 2, 3, 4, 5))(0)((acc, n) => continue(acc + n))
+        assertTrue(result == 15)
+      },
+      test("fold exits early with done") {
+        val result = Loop.fold(List(3, 4, 5, 6, 7))(0) { (acc, n) =>
+          val next = acc + n
+          if (next > 10) done(acc)
+          else continue(next)
+        }
+        assertTrue(result == 7)
+      },
+      test("fold continue skips elements") {
+        val result = Loop.fold(1 to 10)(0) { (acc, n) =>
+          if (n % 2 == 0) continue
+          else continue(acc + n)
+        }
+        assertTrue(result == 25)
+      },
+      test("fold with Writer") {
+        val (logs, result) = Writer {
+          Loop.fold(List("a", "b", "c"))("") { (acc, s) =>
+            write(s"processing $s")
+            continue(if (acc.isEmpty) s else s"$acc,$s")
+          }
+        }
+        assertTrue(
+          result == "a,b,c",
+          logs == Vector("processing a", "processing b", "processing c")
+        )
+      },
+      test("fold on empty collection returns initial") {
+        val result = Loop.fold(List.empty[Int])(42)((acc, _) => continue(acc + 1))
+        assertTrue(result == 42)
+      },
+      test("nested loop (2 levels) inner done does not exit outer") {
+        var outerCount = 0
+        var innerCount = 0
+        val result     = Loop {
+          outerCount += 1
+          Loop {
+            innerCount += 1
+            if (innerCount % 3 == 0) done(())
+            else continue
+          }
+          if (outerCount >= 4) done(s"outer=$outerCount inner=$innerCount")
+          else continue
+        }
+        assertTrue(
+          result == "outer=4 inner=12",
+          outerCount == 4,
+          innerCount == 12
+        )
+      },
+      test("nested loop (2 levels) continue only affects its own level") {
+        var outerIters = 0
+        var innerSkips = 0
+        val result     = Loop {
+          outerIters += 1
+          if (outerIters > 3) done(Vector.empty[Int])
+          else {
+            var collected = Vector.empty[Int]
+            var j         = 0
+            Loop {
+              j += 1
+              if (j > 6) done(())
+              else if (j % 2 == 0) { innerSkips += 1; continue }
+              else { collected = collected :+ j; continue }
+            }
+            if (outerIters == 3) done(collected)
+            else continue
+          }
+        }
+        assertTrue(
+          result == Vector(1, 3, 5),
+          outerIters == 3,
+          innerSkips == 9
+        )
+      },
+      test("nested loop (2 levels) with shared State and Writer") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            var i = 0
+            Loop {
+              i += 1
+              write(s"outer=$i")
+              var j = 0
+              Loop {
+                j += 1
+                if (j > 3) done(())
+                else { update[Int](_ + 1); continue }
+              }
+              write(s"state=${get[Int]}")
+              if (i >= 2) done(get[Int])
+              else continue
+            }
+          }
+        assertTrue(
+          result == Right((6, 6)),
+          logs == Vector("outer=1", "state=3", "outer=2", "state=6")
+        )
+      },
+      test("3-level nested loop accumulates correctly with Writer and State") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            var i = 0
+            Loop {
+              i += 1
+              if (i > 3) done(get[Int])
+              else {
+                var j = 0
+                Loop {
+                  j += 1
+                  if (j > i) done(())
+                  else {
+                    var k = 0
+                    Loop {
+                      k += 1
+                      if (k > 2) done(())
+                      else { update[Int](_ + 1); write(s"$i.$j.$k"); continue }
+                    }
+                    continue
+                  }
+                }
+                continue
+              }
+            }
+          }
+        assertTrue(
+          logs == Vector(
+            "1.1.1",
+            "1.1.2",
+            "2.1.1",
+            "2.1.2",
+            "2.2.1",
+            "2.2.2",
+            "3.1.1",
+            "3.1.2",
+            "3.2.1",
+            "3.2.2",
+            "3.3.1",
+            "3.3.2"
+          ),
+          logs.size == 12,
+          result == Right((12, 12))
+        )
+      },
+      test("nested loop with Abort short-circuits entire computation") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            var i = 0
+            Loop {
+              i += 1
+              update[Int](_ + 1)
+              val s = get[Int]
+              write(s"outer=$s")
+              var j = 0
+              Loop {
+                j += 1
+                update[Int](_ + 1)
+                if (get[Int] > 100) fail("too high")
+                if (j >= 2) done(())
+                else continue
+              }
+              if (i >= 3) done("finished")
+              else continue
+            }
+          }
+        assertTrue(
+          result == Right((9, "finished")),
+          logs == Vector("outer=1", "outer=4", "outer=7")
+        )
+      },
+      test("nested loop with recover rolls back inner failure") {
+        val (logs, result) =
+          Logic.run(0, ()) {
+            var i = 0
+            Loop {
+              i += 1
+              update[Int](_ + 1)
+              val s = get[Int]
+              write(s"iter=$s")
+              recover {
+                Loop {
+                  update[Int](_ + 10)
+                  write(s"inner=${get[Int]}")
+                  fail("boom")
+                  continue
+                }
+              }(_ => write(s"recovered at state=${get[Int]}"))
+              if (i >= 2) done("ok")
+              else continue
+            }
+          }
+        assertTrue(
+          result == Right((2, "ok")),
+          logs == Vector("iter=1", "recovered at state=1", "iter=2", "recovered at state=2")
+        )
+      }
+    ),
+    // ---------------------------------------------------------------------------
     // Composition
     // ---------------------------------------------------------------------------
     suite("Composition")(
