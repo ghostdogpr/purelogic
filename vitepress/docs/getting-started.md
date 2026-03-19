@@ -13,7 +13,7 @@ It has **zero dependencies** and is available for Scala 3.3.x LTS and later vers
 Add the following dependency to your `build.sbt` (use `%%` for Scala JVM, `%%%` for Scala.js and Scala Native):
 
 ```scala
-libraryDependencies += "com.github.ghostdogpr" %% "purelogic" % "0.1.0"
+libraryDependencies += "com.github.ghostdogpr" %% "purelogic" % "0.2.0"
 ```
 
 For most of the library, you will only need a single import:
