@@ -11,7 +11,7 @@ import scala.util.boundary.break
   * @tparam E
   *   the type of error
   */
-trait Abort[-E] extends scala.caps.SharedCapability {
+trait Abort[-E] extends scala.caps.ExclusiveCapability {
 
   /**
     * Aborts the computation with the given error.

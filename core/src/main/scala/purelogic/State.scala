@@ -29,7 +29,7 @@ trait StateReader[+S] extends scala.caps.SharedCapability {
   * @tparam S
   *   the type of the state
   */
-trait StateWriter[-S] extends scala.caps.SharedCapability {
+trait StateWriter[-S] extends scala.caps.ExclusiveCapability {
 
   /**
     * Replaces the state with a new value.

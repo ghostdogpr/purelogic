@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
   * @tparam W
   *   the type of values to accumulate
   */
-trait Writer[-W] extends scala.caps.SharedCapability {
+trait Writer[-W] extends scala.caps.ExclusiveCapability {
 
   /**
     * Appends a single value to the log.
