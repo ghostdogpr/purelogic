@@ -59,9 +59,8 @@ object Abort {
   /**
     * Default `Abort[Nothing]` instance that can never fail.
     */
-  @scala.annotation.nowarn
-  given Abort[Nothing] = new Abort[Nothing] {
-    def fail(e: Nothing): Nothing = e
+  given [E <: Nothing]: Abort[E] = new Abort[E] {
+    def fail(e: E): Nothing = e
   }
 
   /**

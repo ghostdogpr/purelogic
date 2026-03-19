@@ -46,9 +46,8 @@ object Reader {
   /**
     * Default `Reader[Unit]` instance that always returns `()`.
     */
-  @scala.annotation.nowarn
-  given Reader[Unit] = new Reader[Unit] {
-    def read: Unit = ()
+  given [R <: Unit]: Reader[R] = new Reader[R] {
+    def read: R = ().asInstanceOf[R]
   }
 
   /**

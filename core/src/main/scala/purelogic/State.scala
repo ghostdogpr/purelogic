@@ -87,13 +87,11 @@ trait State[S] extends StateReader[S] with StateWriter[S] {
     * Runs a block that operates on a subset of the state. Reads and writes to the focused state are reflected in the
     * outer state.
     */
-  def focus[A, B](getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B = {
-    val outer     = this
-    var cachedGet = getFocus
-    var cachedSet = setFocus
-    val state     = new State[A] {
-      def get: A          = cachedGet(outer.get)
-      def set(a: A): Unit = outer.set(cachedSet(outer.get, a))
+  def focus[A, B](getFocus: S -> A)(setFocus: (S, A) -> S)(body: State[A] ?=> B): B = {
+    val outer = this
+    val state = new State[A] {
+      def get: A          = getFocus(outer.get)
+      def set(a: A): Unit = outer.set(setFocus(outer.get, a))
     }
     body(using state)
   }
@@ -118,10 +116,9 @@ object State {
   /**
     * Default `State[Unit]` instance that does nothing.
     */
-  @scala.annotation.nowarn
-  given State[Unit] = new State[Unit] {
-    def get: Unit          = ()
-    def set(s: Unit): Unit = ()
+  given [S <: Unit]: State[S] = new State[S] {
+    def get: S          = ().asInstanceOf[S]
+    def set(s: S): Unit = ()
   }
 
   /**
@@ -173,6 +170,6 @@ object State {
     * Runs a block that operates on a subset of the state. Reads and writes to the focused state are reflected in the
     * outer state.
     */
-  inline def focusState[S, A, B](using s: State[S])(getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B =
+  inline def focusState[S, A, B](using s: State[S])(getFocus: S -> A)(setFocus: (S, A) -> S)(body: State[A] ?=> B): B =
     s.focus(getFocus)(setFocus)(body)
 }
