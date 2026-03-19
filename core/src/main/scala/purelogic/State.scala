@@ -1,14 +1,14 @@
 package purelogic
 
 /**
-  * Mutable state scoped to a computation.
+  * Read-only access to a mutable state of type `S`.
   *
-  * Allows reading and updating a value of type `S` without passing it around explicitly.
+  * This is the read half of [[State]]. Use it when a function only needs to observe the state without modifying it.
   *
   * @tparam S
   *   the type of the state
   */
-trait State[S] {
+trait StateReader[+S] {
 
   /**
     * Returns the current state.
@@ -16,14 +16,36 @@ trait State[S] {
   def get: S
 
   /**
-    * Replaces the state with a new value.
-    */
-  def set(s: S): Unit
-
-  /**
     * Applies a projection function to the state and returns the result.
     */
   def get[A](f: S => A): A = f(get)
+}
+
+/**
+  * Write-only access to a mutable state of type `S`.
+  *
+  * This is the write half of [[State]]. Use it when a function only needs to replace the state without reading it.
+  *
+  * @tparam S
+  *   the type of the state
+  */
+trait StateWriter[-S] {
+
+  /**
+    * Replaces the state with a new value.
+    */
+  def set(s: S): Unit
+}
+
+/**
+  * Mutable state scoped to a computation.
+  *
+  * Allows reading and updating a value of type `S` without passing it around explicitly.
+  *
+  * @tparam S
+  *   the type of the state
+  */
+trait State[S] extends StateReader[S] with StateWriter[S] {
 
   /**
     * Modifies the state using a function.
@@ -102,17 +124,17 @@ object State {
   /**
     * Returns the current state.
     */
-  inline def get[S](using s: State[S]): S = s.get
+  inline def get[S](using s: StateReader[S]): S = s.get
 
   /**
     * Applies a projection function to the state and returns the result.
     */
-  inline def get[S, A](using s: State[S])(f: S => A): A = s.get(f)
+  inline def get[S, A](using s: StateReader[S])(f: S => A): A = s.get(f)
 
   /**
     * Replaces the state with a new value.
     */
-  inline def set[S](v: S)(using s: State[S]): Unit = s.set(v)
+  inline def set[S](v: S)(using s: StateWriter[S]): Unit = s.set(v)
 
   /**
     * Modifies the state using a function.
