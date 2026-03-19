@@ -18,7 +18,7 @@ trait StateReader[+S] extends scala.caps.SharedCapability {
   /**
     * Applies a projection function to the state and returns the result.
     */
-  def get[A](f: S => A): A = f(get)
+  def get[A](f: S -> A): A = f(get)
 }
 
 /**
@@ -50,17 +50,17 @@ trait State[S] extends StateReader[S] with StateWriter[S] {
   /**
     * Modifies the state using a function.
     */
-  def update(f: S => S): Unit = set(f(get))
+  def update(f: S -> S): Unit = set(f(get))
 
   /**
     * Updates the state using a function and returns the new state.
     */
-  def updateAndGet(f: S => S): S = { update(f); get }
+  def updateAndGet(f: S -> S): S = { update(f); get }
 
   /**
     * Computes a return value and a new state from the current state in one step.
     */
-  def modify[A](f: S => (A, S)): A = { val (a, newState) = f(get); set(newState); a }
+  def modify[A](f: S -> (A, S)): A = { val (a, newState) = f(get); set(newState); a }
 
   /**
     * Returns the old state and replaces it with the given value.
@@ -70,12 +70,12 @@ trait State[S] extends StateReader[S] with StateWriter[S] {
   /**
     * Returns the old state and modifies it using a function.
     */
-  def getAndUpdate(f: S => S): S = { val old = get; update(f); old }
+  def getAndUpdate(f: S -> S): S = { val old = get; update(f); old }
 
   /**
     * Runs a block with a modified state. The original state is restored after the block completes.
     */
-  def local[A](f: S => S)(body: State[S] ?=> A): A = {
+  def local[A](f: S -> S)(body: State[S] ?=> A): A = {
     val state    = this
     val previous = get
     set(f(previous))
@@ -129,7 +129,7 @@ object State {
   /**
     * Applies a projection function to the state and returns the result.
     */
-  inline def get[S, A](using s: StateReader[S])(f: S => A): A = s.get(f)
+  inline def get[S, A](using s: StateReader[S])(f: S -> A): A = s.get(f)
 
   /**
     * Replaces the state with a new value.
@@ -139,17 +139,17 @@ object State {
   /**
     * Modifies the state using a function.
     */
-  inline def update[S](using s: State[S])(f: S => S): Unit = s.update(f)
+  inline def update[S](using s: State[S])(f: S -> S): Unit = s.update(f)
 
   /**
     * Updates the state using a function and returns the new state.
     */
-  inline def updateAndGet[S](using s: State[S])(f: S => S): S = s.updateAndGet(f)
+  inline def updateAndGet[S](using s: State[S])(f: S -> S): S = s.updateAndGet(f)
 
   /**
     * Computes a return value and a new state from the current state in one step.
     */
-  inline def modify[S, A](using s: State[S])(f: S => (A, S)): A = s.modify(f)
+  inline def modify[S, A](using s: State[S])(f: S -> (A, S)): A = s.modify(f)
 
   /**
     * Returns the old state and replaces it with the given value.
@@ -159,12 +159,12 @@ object State {
   /**
     * Returns the old state and modifies it using a function.
     */
-  inline def getAndUpdate[S](using s: State[S])(f: S => S): S = s.getAndUpdate(f)
+  inline def getAndUpdate[S](using s: State[S])(f: S -> S): S = s.getAndUpdate(f)
 
   /**
     * Runs a block with a modified state. The original state is restored after the block completes.
     */
-  inline def localState[S, A](using s: State[S])(f: S => S)(body: State[S] ?=> A): A = s.local(f)(body)
+  inline def localState[S, A](using s: State[S])(f: S -> S)(body: State[S] ?=> A): A = s.local(f)(body)
 
   /**
     * Runs a block that operates on a subset of the state. Reads and writes to the focused state are reflected in the
