@@ -26,7 +26,7 @@ def readWrite(using State[Counter]): Int = {
 ```
 
 ::: tip Variance
-`StateReader` is **covariant** (`StateReader[+S]`) and `StateWriter` is **contravariant** (`StateWriter[-S]`), so a `State[Dog]` can be passed where a `StateReader[Animal]` or `StateWriter[Poodle]` is expected.
+`StateReader` is **covariant** (`StateReader[+S]`) and `StateWriter` is **contravariant** (`StateWriter[-S]`), so a `State[Dog]` can be passed where a `StateReader[Animal]` or `StateWriter[Pug]` is expected.
 :::
 
 ## Basic usage
