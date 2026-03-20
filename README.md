@@ -1,5 +1,8 @@
 # PureLogic
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.ghostdogpr/purelogic_3)](https://central.sonatype.com/artifact/com.github.ghostdogpr/purelogic_3)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+
 **PureLogic** is a **[Scala](https://www.scala-lang.org/) open source library** for writing **direct-style, pure business logic** using **context functions** (aka capabilities).
 
 It is designed to be **monad-free**, meaning that effects like `Reader`, `Writer`, `State`, and `Abort` compose naturally through Scala 3's `given`/`using` mechanism instead of monad transformers or for-comprehensions.
