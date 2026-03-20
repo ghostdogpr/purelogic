@@ -1,4 +1,4 @@
-val scala3Version = "3.3.7"
+val scala3Version = "3.8.3-RC2"
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
@@ -37,8 +37,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio-test"     % zioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
+      "org.scalameta" %%% "munit" % "1.2.4" % Test
     )
   )
   .jsSettings(Test / fork := false)
@@ -57,9 +56,12 @@ lazy val benchmarks = project
   .enablePlugins(JmhPlugin)
   .settings(name := "purelogic-benchmarks")
   .settings(commonSettings)
-  .settings(scalaVersion := "3.8.2")
+  .settings(scalaVersion := "3.8.3-RC2")
   .settings(
-    scalacOptions := scalacOptions.value.filterNot(_ == "-Ykind-projector").filterNot(_ == "-Xfatal-warnings") :+ "-Xkind-projector"
+    scalacOptions := scalacOptions.value
+      .filterNot(_ == "-Ykind-projector")
+      .filterNot(_ == "-Xfatal-warnings")
+      .filterNot(_ == "-language:experimental.captureChecking") :+ "-Xkind-projector"
   )
   .settings(publish / skip := true)
   .settings(
@@ -76,11 +78,12 @@ lazy val benchmarks = project
 lazy val commonSettings = Def.settings(
   scalacOptions ++= Seq(
     "-deprecation",
-    "-Xfatal-warnings",
+    "-Werror",
     "-no-indent",
     "-Wunused:imports,params,privates,implicits,explicits,nowarn",
     "-Wvalue-discard",
-    "-Ykind-projector"
+    "-Xkind-projector",
+    "-language:experimental.captureChecking"
   ),
   Test / fork := true
 )
