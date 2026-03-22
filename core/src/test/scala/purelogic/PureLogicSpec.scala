@@ -4,6 +4,7 @@ import scala.util.{Failure, Success}
 
 import zio.test.*
 
+import purelogic.EventSourcing.*
 import purelogic.syntax.*
 
 object PureLogicSpec extends ZIOSpecDefault {
@@ -506,6 +507,145 @@ object PureLogicSpec extends ZIOSpecDefault {
         assertTrue(
           result == Right((0, 42)),
           logs == Vector("outer", "recovered: inner-err")
+        )
+      }
+    ),
+    // ---------------------------------------------------------------------------
+    // EventSourcing
+    // ---------------------------------------------------------------------------
+    suite("EventSourcing")(
+      test("writeEvent applies transitions and runEventSourcing returns events, final state, and result") {
+        case class Counter(value: Int)
+        enum CounterEvent { case Incremented; case Decremented }
+        import CounterEvent.*
+
+        given Transition[CounterEvent, Counter, Nothing] with {
+          def run(ev: CounterEvent) = ev match {
+            case Incremented => update(c => c.copy(value = c.value + 1))
+            case Decremented => update(c => c.copy(value = c.value - 1))
+          }
+        }
+
+        val result = Logic.runEventSourcing(Counter(0), ()) {
+          writeEvent(Incremented)
+          writeEvent(Incremented)
+          writeEvent(Decremented)
+          get
+        }
+        assertTrue(result == Right((Vector(Incremented, Incremented, Decremented), Counter(1), Counter(1))))
+      },
+      test("writeEvent aborts when transition fails") {
+        case class Account(balance: Int)
+        enum AccountEvent { case Withdrawn(amount: Int) }
+        import AccountEvent.*
+
+        given Transition[AccountEvent, Account, String] with {
+          def run(ev: AccountEvent) = ev match {
+            case Withdrawn(amount) =>
+              ensure(get[Account].balance >= amount, "insufficient funds")
+              update(a => a.copy(balance = a.balance - amount))
+          }
+        }
+
+        val result = Logic.runEventSourcing(Account(50), ()) {
+          writeEvent(Withdrawn(30))
+          writeEvent(Withdrawn(30))
+        }
+        assertTrue(result == Left("insufficient funds"))
+      },
+      test("replayEvents rebuilds state without emitting events") {
+        case class Counter(value: Int)
+        enum CounterEvent { case Incremented; case Decremented }
+        import CounterEvent.*
+
+        given Transition[CounterEvent, Counter, Nothing] with {
+          def run(ev: CounterEvent) = ev match {
+            case Incremented => update(c => c.copy(value = c.value + 1))
+            case Decremented => update(c => c.copy(value = c.value - 1))
+          }
+        }
+
+        val history = Vector(Incremented, Incremented, Decremented)
+
+        val (events, finalState, _) = Logic.runEventSourcingInfallible(Counter(0), ()) {
+          replayEvents(history)
+          get
+        }
+        assertTrue(
+          finalState == Counter(1),
+          events == Vector()
+        )
+      },
+      test("replayEvents followed by writeEvent only records new events") {
+        case class Counter(value: Int)
+        enum CounterEvent { case Incremented; case Decremented }
+        import CounterEvent.*
+
+        given Transition[CounterEvent, Counter, Nothing] with {
+          def run(ev: CounterEvent) = ev match {
+            case Incremented => update(c => c.copy(value = c.value + 1))
+            case Decremented => update(c => c.copy(value = c.value - 1))
+          }
+        }
+
+        val history = Vector(Incremented, Incremented)
+
+        val (events, finalState, _) = Logic.runEventSourcingInfallible(Counter(0), ()) {
+          replayEvents(history)
+          writeEvent(Decremented)
+          get
+        }
+        assertTrue(
+          finalState == Counter(1),
+          events == Vector(Decremented)
+        )
+      },
+      test("replayEvents aborts on invalid event") {
+        case class Account(balance: Int)
+        enum AccountEvent { case Withdrawn(amount: Int) }
+        import AccountEvent.*
+
+        given Transition[AccountEvent, Account, String] with {
+          def run(ev: AccountEvent) = ev match {
+            case Withdrawn(amount) =>
+              ensure(get[Account].balance >= amount, "insufficient funds")
+              update(a => a.copy(balance = a.balance - amount))
+          }
+        }
+
+        val badHistory = Vector(Withdrawn(30), Withdrawn(30))
+
+        val result = Logic.runEventSourcing(Account(50), ()) {
+          replayEvents(badHistory)
+        }
+        assertTrue(result == Left("insufficient funds"))
+      },
+      test("individual transitions per subtype via Ev1 <: Ev bound") {
+        sealed trait AppEvent
+        object AppEvent {
+          case class Created(name: String) extends AppEvent
+          case class Deleted(name: String) extends AppEvent
+        }
+        case class Items(names: List[String])
+        import AppEvent.*
+
+        given Transition[Created, Items, Nothing] with {
+          def run(ev: Created) = update(s => Items(s.names :+ ev.name))
+        }
+
+        given Transition[Deleted, Items, Nothing] with {
+          def run(ev: Deleted) = update(s => Items(s.names.filterNot(_ == ev.name)))
+        }
+
+        val (events, finalState, _) = Logic.runEventSourcingInfallible(Items(Nil), ()) {
+          writeEvent(Created("a"))
+          writeEvent(Created("b"))
+          writeEvent(Deleted("a"))
+          get
+        }
+        assertTrue(
+          finalState == Items(List("b")),
+          events == Vector(Created("a"), Created("b"), Deleted("a"))
         )
       }
     )
