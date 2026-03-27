@@ -21,6 +21,19 @@ trait StateReader[+S] {
   def get[A](f: S => A): A = f(get)
 }
 
+object StateReader {
+
+  /**
+    * Provides a `StateReader[S]` with the given value and runs the body, returning the result directly.
+    */
+  def apply[S, A](value: S)(body: StateReader[S] ?=> A): A = {
+    val stateReader = new StateReader[S] {
+      def get: S = value
+    }
+    body(using stateReader)
+  }
+}
+
 /**
   * Write-only access to a mutable state of type `S`.
   *
@@ -35,6 +48,22 @@ trait StateWriter[-S] {
     * Replaces the state with a new value.
     */
   def set(s: S): Unit
+}
+
+object StateWriter {
+
+  /**
+    * Provides a `StateWriter[S]` with the given initial value and runs the body, returning a tuple of the final state
+    * and the result.
+    */
+  def apply[S, A](initial: S)(body: StateWriter[S] ?=> A): (S, A) = {
+    var current: S  = initial
+    val stateWriter = new StateWriter[S] {
+      def set(s: S): Unit = current = s
+    }
+    val result      = body(using stateWriter)
+    (current, result)
+  }
 }
 
 /**

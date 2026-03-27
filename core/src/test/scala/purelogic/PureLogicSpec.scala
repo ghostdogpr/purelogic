@@ -74,6 +74,14 @@ object PureLogicSpec extends ZIOSpecDefault {
         def readOnly(using StateReader[Int]): Int = get + 1
         val (finalState, result)                  = State(10)(readOnly)
         assertTrue(result == 11, finalState == 10)
+      },
+      test("StateReader.apply provides read-only state") {
+        val result = StateReader(42)(get)
+        assertTrue(result == 42)
+      },
+      test("StateReader.apply projects the state") {
+        val result = StateReader(List(1, 2, 3))(get(_.size))
+        assertTrue(result == 3)
       }
     ),
     // ---------------------------------------------------------------------------
@@ -92,6 +100,14 @@ object PureLogicSpec extends ZIOSpecDefault {
         def writeOnly(using StateWriter[Int]): Unit = set(99)
         val (finalState, _)                         = State(0)(writeOnly)
         assertTrue(finalState == 99)
+      },
+      test("StateWriter.apply provides write-only state") {
+        val (finalState, _) = StateWriter(0)(set(42))
+        assertTrue(finalState == 42)
+      },
+      test("StateWriter.apply returns initial state when nothing is written") {
+        val (finalState, result) = StateWriter(0)(42)
+        assertTrue(finalState == 0, result == 42)
       }
     ),
     // ---------------------------------------------------------------------------
