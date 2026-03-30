@@ -463,6 +463,35 @@ object PureLogicSpec extends ZIOSpecDefault {
           result == Right((AppState(List("outer")), AppState(List("outer")))),
           logs == Vector(Log("outer-log"))
         )
+      },
+      test("simulateWith(mockState) reuses the outer Reader") {
+        val (_, result) =
+          Logic.run(AppState(Nil), Config(0.5)) {
+            val inner = Logic.simulateWith(AppState(List("mock"))) {
+              addItem("simulated")
+              get
+            }
+            inner
+          }
+        assertTrue(result == Right((AppState(Nil), AppState(List("mock", "simulated")))))
+      },
+      test("simulate works with only StateReader in scope") {
+        def readOnlySimulate(using Reader[Config], StateReader[AppState], Abort[AppError]): Int =
+          Logic.simulate {
+            addItem("simulated")
+            get(_.items.size)
+          }
+
+        val (logs, result) =
+          Logic.run(AppState(List("original")), Config(0.1)) {
+            val count = readOnlySimulate
+            val outerState = get
+            (count, outerState)
+          }
+        assertTrue(
+          result == Right((AppState(List("original")), (2, AppState(List("original"))))),
+          logs.isEmpty
+        )
       }
     ),
     // ---------------------------------------------------------------------------
