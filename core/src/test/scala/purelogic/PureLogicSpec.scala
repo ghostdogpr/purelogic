@@ -484,7 +484,7 @@ object PureLogicSpec extends ZIOSpecDefault {
 
         val (logs, result) =
           Logic.run(AppState(List("original")), Config(0.1)) {
-            val count = readOnlySimulate
+            val count      = readOnlySimulate
             val outerState = get
             (count, outerState)
           }
