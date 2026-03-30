@@ -493,6 +493,35 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector(Log("outer-log")))
   }
 
+  test("Logic.run: simulateWith(mockState) reuses the outer Reader") {
+    val (_, result) =
+      Logic.run(AppState(Nil), Config(0.5)) {
+        val inner = Logic.simulateWith(AppState(List("mock"))) {
+          addItem("simulated")
+          get
+        }
+        inner
+      }
+    assertEquals(result, Right((AppState(Nil), AppState(List("mock", "simulated")))))
+  }
+
+  test("Logic.run: simulate works with only StateReader in scope") {
+    def readOnlySimulate(using Reader[Config], StateReader[AppState], Abort[AppError]): Int =
+      Logic.simulate {
+        addItem("simulated")
+        get(_.items.size)
+      }
+
+    val (logs, result) =
+      Logic.run(AppState(List("original")), Config(0.1)) {
+        val count      = readOnlySimulate
+        val outerState = get
+        (count, outerState)
+      }
+    assertEquals(result, Right((AppState(List("original")), (2, AppState(List("original"))))))
+    assert(logs.isEmpty)
+  }
+
   // ---------------------------------------------------------------------------
   // Composition
   // ---------------------------------------------------------------------------
