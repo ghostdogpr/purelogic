@@ -16,13 +16,12 @@ import EventSourcing.Transition
 trait EventSourcing[Ev, S, Err] {
   protected given state: State[S]
   protected given writer: Writer[Ev]
-  protected given abort: Abort[Err]
 
   /**
     * Applies the transition for the given event to update the state, then records the event. If the transition fails via
     * [[Abort]], the event is not recorded.
     */
-  def writeEvent[Ev1 <: Ev](event: Ev1)(using transition: Transition[Ev1, S, Err]): Unit = {
+  def writeEvent[Ev1 <: Ev](event: Ev1)(using transition: Transition[Ev1, S, Err], abort: Abort[Err]): Unit = {
     transition.run(event)
     write(event)
   }
@@ -31,7 +30,7 @@ trait EventSourcing[Ev, S, Err] {
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
-  def replayEvents(events: Iterable[Ev])(using transition: Transition[Ev, S, Err]): Unit =
+  def replayEvents(events: Iterable[Ev])(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
     events.foreach(transition.run)
 }
 
@@ -59,14 +58,12 @@ object EventSourcing {
     * Provides an [[EventSourcing]] instance and runs the body, threading through [[State]], [[Writer]], and [[Abort]]
     * from the enclosing scope.
     */
-  def apply[Ev, S, Err, A](body: EventSourcing[Ev, S, Err] ?=> A): (State[S], Writer[Ev], Abort[Err]) ?=> A = {
+  def apply[Ev, S, Err, A](body: EventSourcing[Ev, S, Err] ?=> A): (State[S], Writer[Ev]) ?=> A = {
     val s             = summon[State[S]]
     val w             = summon[Writer[Ev]]
-    val a             = summon[Abort[Err]]
     val eventSourcing = new EventSourcing[Ev, S, Err] {
       protected given state: State[S]    = s
       protected given writer: Writer[Ev] = w
-      protected given abort: Abort[Err]  = a
     }
     body(using eventSourcing)
   }
@@ -76,7 +73,8 @@ object EventSourcing {
     * [[Abort]], the event is not recorded.
     */
   inline def writeEvent[Ev1 <: Ev, Ev, S, Err](event: Ev1)(using transition: Transition[Ev1, S, Err])(
-    using eventSourcing: EventSourcing[Ev, S, Err]
+    using eventSourcing: EventSourcing[Ev, S, Err],
+    abort: Abort[Err]
   ): Unit =
     eventSourcing.writeEvent(event)
 
@@ -85,7 +83,8 @@ object EventSourcing {
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
   inline def replayEvents[Ev, S, Err](events: Iterable[Ev])(using transition: Transition[Ev, S, Err])(
-    using eventSourcing: EventSourcing[Ev, S, Err]
+    using eventSourcing: EventSourcing[Ev, S, Err],
+    abort: Abort[Err]
   ): Unit =
     eventSourcing.replayEvents(events)
 }
