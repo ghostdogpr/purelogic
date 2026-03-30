@@ -7,6 +7,7 @@ val zioPreludeVersion = "1.0.0-RC46"
 val kyoVersion        = "1.0-RC1"
 val turboliftVersion  = "0.126.0"
 val zioVersion        = "2.1.24"
+val munitVersion      = "1.2.4"
 
 inThisBuild(
   List(
@@ -37,8 +38,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio-test"     % zioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % zioVersion % Test
+      "org.scalameta" %%% "munit" % munitVersion % Test
     )
   )
   .jsSettings(Test / fork := false)
