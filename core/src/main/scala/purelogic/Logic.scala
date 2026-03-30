@@ -36,8 +36,14 @@ object Logic {
   }
 
   /**
-    * Like `simulateWith`, but reuses the `Reader` and `State` values from the outer scope.
+    * Runs a sub-program in isolation, reusing the outer `Reader` value.
     */
-  def simulate[W, S, R, E, A](f: Logic[R, W, S, E, A])(using Reader[R], State[S], Abort[E]): A =
+  def simulateWith[W, S, R, E, A](mockState: S)(f: Logic[R, W, S, E, A])(using Reader[R], Abort[E]): A =
+    simulateWith(mockState, read)(f)
+
+  /**
+    * Runs a sub-program in isolation, reusing the outer `Reader` and `StateReader` values.
+    */
+  def simulate[W, S, R, E, A](f: Logic[R, W, S, E, A])(using Reader[R], StateReader[S], Abort[E]): A =
     simulateWith(get, read)(f)
 }

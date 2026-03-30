@@ -5,6 +5,7 @@ import scala.util.{Failure, Success}
 import purelogic.syntax.*
 
 class PureLogicSpec extends munit.FunSuite {
+  inline def fail[E](e: E)(using abort: Abort[E]): Nothing = abort.fail(e)
 
   case class Config(discount: Double)
   case class AppState(items: List[String])
@@ -26,6 +27,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // Reader
   // ---------------------------------------------------------------------------
+
   test("Reader: read returns the environment") {
     val result = Reader(42)(read)
     assertEquals(result, 42)
@@ -63,6 +65,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // StateReader
   // ---------------------------------------------------------------------------
+
   test("StateReader: StateReader is covariant") {
     val (_, result) = State(List(1, 2, 3)) {
       val reader: StateReader[Iterable[Int]] = summon[State[List[Int]]]
@@ -81,6 +84,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // StateWriter
   // ---------------------------------------------------------------------------
+
   test("StateWriter: StateWriter is contravariant") {
     def acceptsWriter(w: StateWriter[Int]): Unit = w.set(42)
     val (finalState, _)                          = State(0) {
@@ -99,6 +103,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
+
   test("State: get returns the current state") {
     val (_, result) = State(10)(get)
     assertEquals(result, 10)
@@ -172,6 +177,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // Writer
   // ---------------------------------------------------------------------------
+
   test("Writer: write appends a single entry") {
     val (logs, _) = Writer(write("hello"))
     assertEquals(logs, Vector("hello"))
@@ -208,8 +214,9 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // Abort
   // ---------------------------------------------------------------------------
+
   test("Abort: fail short-circuits with an error") {
-    val result: Either[String, Nothing] = Abort(Abort.fail("boom"))
+    val result: Either[String, Nothing] = Abort(fail("boom"))
     assertEquals(result, Left("boom"))
   }
 
@@ -277,6 +284,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // orFail extensions
   // ---------------------------------------------------------------------------
+
   test("orFail: Some.orFail returns the value") {
     val result = Abort(Some(42).orFail("missing"))
     assertEquals(result, Right(42))
@@ -311,6 +319,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // Recovery
   // ---------------------------------------------------------------------------
+
   test("Recovery: recover rolls back state and logs on error") {
     val (logs, result) =
       Logic.run(0, ()) {
@@ -319,7 +328,7 @@ class PureLogicSpec extends munit.FunSuite {
         recover {
           set(99)
           write("inside")
-          Abort.fail("oops")
+          fail("oops")
         }(_ => -1)
       }
     assertEquals(result, Right((10, -1)))
@@ -347,7 +356,7 @@ class PureLogicSpec extends munit.FunSuite {
         recoverKeepLog {
           set(99)
           write("inside")
-          Abort.fail("oops")
+          fail("oops")
         }(_ => -1)
       }
     assertEquals(result, Right((10, -1)))
@@ -357,7 +366,7 @@ class PureLogicSpec extends munit.FunSuite {
   test("Recovery: recover can be used without State or Writer") {
     val result = Abort {
       recover {
-        Abort.fail("boom")
+        fail("boom")
       }(_ => "recovered")
     }
     assertEquals(result, Right("recovered"))
@@ -371,7 +380,7 @@ class PureLogicSpec extends munit.FunSuite {
         recoverSome {
           set(99)
           write("inside")
-          Abort.fail("handled")
+          fail("handled")
         } { case "handled" => -1 }
       }
     assertEquals(result, Right((10, -1)))
@@ -386,7 +395,7 @@ class PureLogicSpec extends munit.FunSuite {
         recoverSome {
           set(99)
           write("inside")
-          Abort.fail("unhandled")
+          fail("unhandled")
         } { case "handled" => -1 }
       }
     assertEquals(result, Left("unhandled"))
@@ -401,7 +410,7 @@ class PureLogicSpec extends munit.FunSuite {
         recoverSomeKeepLog {
           set(99)
           write("inside")
-          Abort.fail("handled")
+          fail("handled")
         } { case "handled" => -1 }
       }
     assertEquals(result, Right((10, -1)))
@@ -416,7 +425,7 @@ class PureLogicSpec extends munit.FunSuite {
         recoverSomeKeepLog {
           set(99)
           write("inside")
-          Abort.fail("unhandled")
+          fail("unhandled")
         } { case "handled" => -1 }
       }
     assertEquals(result, Left("unhandled"))
@@ -426,6 +435,7 @@ class PureLogicSpec extends munit.FunSuite {
   // ---------------------------------------------------------------------------
   // Logic.run
   // ---------------------------------------------------------------------------
+
   test("Logic.run: happy path threads state, logs, and reader") {
     val (logs, result) =
       Logic.run(AppState(Nil), Config(0.1)) {
@@ -483,9 +493,39 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector(Log("outer-log")))
   }
 
+  test("Logic.run: simulateWith(mockState) reuses the outer Reader") {
+    val (_, result) =
+      Logic.run(AppState(Nil), Config(0.5)) {
+        val inner = Logic.simulateWith(AppState(List("mock"))) {
+          addItem("simulated")
+          get
+        }
+        inner
+      }
+    assertEquals(result, Right((AppState(Nil), AppState(List("mock", "simulated")))))
+  }
+
+  test("Logic.run: simulate works with only StateReader in scope") {
+    def readOnlySimulate(using Reader[Config], StateReader[AppState], Abort[AppError]): Int =
+      Logic.simulate {
+        addItem("simulated")
+        get(_.items.size)
+      }
+
+    val (logs, result) =
+      Logic.run(AppState(List("original")), Config(0.1)) {
+        val count      = readOnlySimulate
+        val outerState = get
+        (count, outerState)
+      }
+    assertEquals(result, Right((AppState(List("original")), (2, AppState(List("original"))))))
+    assert(logs.isEmpty)
+  }
+
   // ---------------------------------------------------------------------------
   // Composition
   // ---------------------------------------------------------------------------
+
   test("Composition: functions compose naturally through context propagation") {
     def step1(using State[Int], Writer[String]) = {
       update(_ + 1)
@@ -514,7 +554,7 @@ class PureLogicSpec extends munit.FunSuite {
         write("outer")
         val inner = recover {
           write("inner")
-          Abort.fail("inner-err")
+          fail("inner-err")
         }(e => s"recovered: $e")
         write(inner)
         42
