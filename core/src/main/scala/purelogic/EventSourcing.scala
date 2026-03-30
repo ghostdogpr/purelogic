@@ -58,9 +58,7 @@ object EventSourcing {
     * Provides an [[EventSourcing]] instance and runs the body, threading through [[State]], [[Writer]], and [[Abort]]
     * from the enclosing scope.
     */
-  def apply[Ev, S, Err, A](body: EventSourcing[Ev, S, Err] ?=> A): (State[S], Writer[Ev]) ?=> A = {
-    val s             = summon[State[S]]
-    val w             = summon[Writer[Ev]]
+  def apply[Ev, S, Err, A](body: EventSourcing[Ev, S, Err] ?=> A)(using s: State[S], w: Writer[Ev]): A = {
     val eventSourcing = new EventSourcing[Ev, S, Err] {
       protected given state: State[S]    = s
       protected given writer: Writer[Ev] = w
