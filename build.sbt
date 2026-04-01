@@ -57,7 +57,7 @@ lazy val benchmarks = project
   .enablePlugins(JmhPlugin)
   .settings(name := "purelogic-benchmarks")
   .settings(commonSettings)
-  .settings(scalaVersion := "3.8.2")
+  .settings(scalaVersion := "3.8.3")
   .settings(
     scalacOptions := scalacOptions.value.filterNot(_ == "-Ykind-projector").filterNot(_ == "-Xfatal-warnings") :+ "-Xkind-projector"
   )
