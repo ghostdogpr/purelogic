@@ -19,7 +19,7 @@ type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
 given EventSourcing.Transition[AccountEvent, Account, String] with {
   def run(ev: AccountEvent): (State[Account], Abort[String]) ?=> Unit =
     ev match {
-      case AccountEvent.Deposited(amount)  =>
+      case AccountEvent.Deposited(amount) =>
         update(a => Account(a.balance + amount))
       case AccountEvent.Withdrawn(amount) =>
         ensure(get.balance >= amount, "Insufficient balance")
@@ -62,7 +62,7 @@ object AccountExample {
       case Right((events, account, _)) =>
         println("=== Events ===")
         events.foreach {
-          case AccountEvent.Deposited(amount)  => println(s"  Deposited $amount")
+          case AccountEvent.Deposited(amount) => println(s"  Deposited $amount")
           case AccountEvent.Withdrawn(amount) => println(s"  Withdrew $amount")
         }
         println(s"\nFinal balance: ${account.balance}")
