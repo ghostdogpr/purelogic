@@ -1,9 +1,9 @@
-val scala3Version = "3.8.3-RC2"
+val scala3Version = "3.8.3"
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
 val catsMtlVersion    = "1.6.0"
-val zioPreludeVersion = "1.0.0-RC46"
+val zioPreludeVersion = "1.0.0-RC47"
 val kyoVersion        = "1.0-RC1"
 val turboliftVersion  = "0.126.0"
 val zioVersion        = "2.1.24"
@@ -57,7 +57,7 @@ lazy val benchmarks = project
   .enablePlugins(JmhPlugin)
   .settings(name := "purelogic-benchmarks")
   .settings(commonSettings)
-  .settings(scalaVersion := "3.8.3-RC2")
+  .settings(scalaVersion := "3.8.3")
   .settings(
     scalacOptions := scalacOptions.value
       .filterNot(_ == "-Ykind-projector")

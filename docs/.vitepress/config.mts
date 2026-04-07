@@ -31,6 +31,7 @@ export default defineConfig({
               { text: 'Writer', link: '/writer' },
               { text: 'State', link: '/state' },
               { text: 'Abort', link: '/abort' },
+              { text: 'Event Sourcing', link: '/event-sourcing' },
             ]
           }
         ]
