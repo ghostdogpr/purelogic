@@ -9,6 +9,8 @@
 
 Each capability is described in detail on its own page. This page covers how to **use** and **combine** them.
 
+PureLogic also provides [`EventSourcing`](event-sourcing.md), a higher-level pattern built on top of `State` and `Writer` that ensures state can only change through recorded events.
+
 ## Calling capability functions
 
 Every capability exposes its functions in **3 different ways**. Let's use `State` as an example:
