@@ -14,7 +14,6 @@ A `Transition[Ev, S, Err]` defines how an event modifies the state, potentially 
 
 ```scala
 import purelogic.*
-import purelogic.syntax.*
 
 case class Account(balance: Int)
 
@@ -112,6 +111,12 @@ This works with `sealed trait` hierarchies but not with `enum`, because Scala wi
 :::
 
 ```scala
+sealed trait AccountEvent
+object AccountEvent {
+  case class Deposit(amount: Int) extends AccountEvent
+  case class Withdraw(amount: Int) extends AccountEvent
+}
+
 given EventSourcing.Transition[AccountEvent.Deposit, Account, String] with {
   def run(ev: AccountEvent.Deposit): (State[Account], Abort[String]) ?=> Unit =
     update(a => Account(a.balance + ev.amount))
