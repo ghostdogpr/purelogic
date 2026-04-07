@@ -104,7 +104,7 @@ val (events, finalState, result) =
 
 ## Polymorphic transitions
 
-You can define different transitions for **subtypes** of your event type. `writeEvent` accepts any `Ev1 <: Ev`, so each event subtype can have its own dedicated `Transition`.
+You can define different transitions for **subtypes** of your event type. `writeEvent` accepts any `Ev1 <: Ev`, so each event subtype can have its own dedicated `Transition`. `replayEvents`, however, still requires a `Transition[Ev, S, Err]` for the base event type, so replaying a persisted `Vector[Ev]` also needs a base transition.
 
 ::: warning
 This works with `sealed trait` hierarchies but not with `enum`, because Scala widens enum cases to the parent type by default.
