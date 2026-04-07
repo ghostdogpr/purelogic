@@ -24,6 +24,26 @@ object Logic {
   }
 
   /**
+    * Runs an event-sourced program with `Reader`, `StateReader`, `Abort`, and `EventSourcing`.
+    *
+    * Returns `Right((events, finalState, result))` on success. Returns `Left(error)` on failure; in that case events
+    * and state are intentionally not returned.
+    */
+  def runEventSourcing[R, Ev, S, Err, A](state: S, reader: R)(f: EventSourcingLogic[R, Ev, S, Err, A]): Either[Err, (Vector[Ev], S, A)] =
+    Abort {
+      val (log, (newState, a)) = Reader(reader)(Writer(State(state)(EventSourcing(f))))
+      (log, newState, a)
+    }
+
+  /**
+    * Runs an event-sourced program that cannot fail. Avoids the `Either` wrapper in the result.
+    */
+  def runEventSourcingInfallible[R, Ev, S, A](state: S, reader: R)(f: EventSourcingLogic[R, Ev, S, Nothing, A]): (Vector[Ev], S, A) = {
+    val (log, (newState, a)) = Reader(reader)(Writer(State(state)(EventSourcing(f))))
+    (log, newState, a)
+  }
+
+  /**
     * Runs a sub-program in isolation with the given mock state and reader, without impacting the outer state or writes.
     * Errors are propagated to the outer program via `Abort`.
     */
