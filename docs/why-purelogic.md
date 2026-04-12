@@ -59,7 +59,7 @@ This simplicity compounds as your code grows:
 There are two trade-offs to be aware of when choosing direct style over monads:
 
 - **Referential transparency**: Direct-style code that uses capabilities is not referentially transparent: you cannot freely reorder or deduplicate expressions. My personal opinion is that it won't matter much in practice for this kind of pure logic code.
-- **Trampolining**: Monadic code gets trampolining for free (each `flatMap` returns a data structure instead of recursing), so deeply recursive monadic programs won't overflow the stack. With direct style, you need to make recursive functions `@tailrec` or restructure them to avoid deep recursion.
+- **Trampolining**: Effect systems typically use trampolining (converting recursion into heap-allocated steps that are interpreted in a loop), so deeply recursive monadic programs won't overflow the stack. With direct style, you need to make recursive functions `@tailrec` or restructure them to avoid deep recursion.
 
 ### Performance
 

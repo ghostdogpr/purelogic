@@ -8,8 +8,8 @@ case class Account(balance: Int)
 case class Config(maxDeposit: Int, maxWithdrawal: Int)
 
 enum AccountEvent {
-  case Deposit(amount: Int)
-  case Withdraw(amount: Int)
+  case Deposited(amount: Int)
+  case Withdrawn(amount: Int)
 }
 
 type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
@@ -19,9 +19,9 @@ type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
 given EventSourcing.Transition[AccountEvent, Account, String] with {
   def run(ev: AccountEvent) =
     ev match {
-      case AccountEvent.Deposit(amount)  =>
+      case AccountEvent.Deposited(amount) =>
         update(a => Account(a.balance + amount))
-      case AccountEvent.Withdraw(amount) =>
+      case AccountEvent.Withdrawn(amount) =>
         ensure(get.balance >= amount, "Insufficient balance")
         update(a => Account(a.balance - amount))
     }
@@ -39,12 +39,12 @@ object AccountExample {
 
   def deposit(amount: Int): Program[Unit] = {
     ensure(amount <= read(_.maxDeposit), "Amount exceeds maximum deposit")
-    writeEvent(AccountEvent.Deposit(amount))
+    writeEvent(AccountEvent.Deposited(amount))
   }
 
   def withdraw(amount: Int): Program[Unit] = {
     ensure(amount <= read(_.maxWithdrawal), "Amount exceeds maximum withdrawal")
-    writeEvent(AccountEvent.Withdraw(amount))
+    writeEvent(AccountEvent.Withdrawn(amount))
   }
 
   @main
@@ -62,8 +62,8 @@ object AccountExample {
       case Right((events, account, _)) =>
         println("=== Events ===")
         events.foreach {
-          case AccountEvent.Deposit(amount)  => println(s"  Deposited $amount")
-          case AccountEvent.Withdraw(amount) => println(s"  Withdrew $amount")
+          case AccountEvent.Deposited(amount) => println(s"  Deposited $amount")
+          case AccountEvent.Withdrawn(amount) => println(s"  Withdrew $amount")
         }
         println(s"\nFinal balance: ${account.balance}")
 
@@ -75,7 +75,7 @@ object AccountExample {
 
     // Replay events to rebuild state, then continue
     val result2 = Logic.runEventSourcing(Account(0), config) {
-      replayEvents(Vector(AccountEvent.Deposit(100), AccountEvent.Deposit(50)))
+      replayEvents(Vector(AccountEvent.Deposited(100), AccountEvent.Deposited(50)))
       println(s"Balance after replay: ${get.balance}")
       withdraw(30)
     }

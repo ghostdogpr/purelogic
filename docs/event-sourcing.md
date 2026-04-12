@@ -18,16 +18,16 @@ import purelogic.*
 case class Account(balance: Int)
 
 enum AccountEvent {
-  case Deposit(amount: Int)
-  case Withdraw(amount: Int)
+  case Deposited(amount: Int)
+  case Withdrawn(amount: Int)
 }
 
 given EventSourcing.Transition[AccountEvent, Account, String] with {
   def run(ev: AccountEvent): (State[Account], Abort[String]) ?=> Unit =
     ev match {
-      case AccountEvent.Deposit(amount) =>
+      case AccountEvent.Deposited(amount) =>
         update(a => Account(a.balance + amount))
-      case AccountEvent.Withdraw(amount) =>
+      case AccountEvent.Withdrawn(amount) =>
         ensure(get.balance >= amount, "Insufficient balance")
         update(a => Account(a.balance - amount))
     }
@@ -43,12 +43,12 @@ type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
 
 def deposit(amount: Int): Program[Unit] = {
   ensure(amount <= read(_.maxDeposit), "Amount exceeds maximum deposit")
-  writeEvent(AccountEvent.Deposit(amount))
+  writeEvent(AccountEvent.Deposited(amount))
 }
 
 def withdraw(amount: Int): Program[Unit] = {
   ensure(amount <= read(_.maxWithdrawal), "Amount exceeds maximum withdrawal")
-  writeEvent(AccountEvent.Withdraw(amount))
+  writeEvent(AccountEvent.Withdrawn(amount))
 }
 ```
 
@@ -88,7 +88,7 @@ val result: Either[String, (Vector[AccountEvent], Account, Unit)] =
     deposit(50)
     withdraw(30)
   }
-// Right((Vector(Deposit(50), Withdraw(30)), Account(120), ()))
+// Right((Vector(Deposited(50), Withdrawn(30)), Account(120), ()))
 ```
 
 ### `Logic.runEventSourcingInfallible`
@@ -113,17 +113,17 @@ This works with `sealed trait` hierarchies but not with `enum`, because Scala wi
 ```scala
 sealed trait AccountEvent
 object AccountEvent {
-  case class Deposit(amount: Int) extends AccountEvent
-  case class Withdraw(amount: Int) extends AccountEvent
+  case class Deposited(amount: Int) extends AccountEvent
+  case class Withdrawn(amount: Int) extends AccountEvent
 }
 
-given EventSourcing.Transition[AccountEvent.Deposit, Account, String] with {
-  def run(ev: AccountEvent.Deposit): (State[Account], Abort[String]) ?=> Unit =
+given EventSourcing.Transition[AccountEvent.Deposited, Account, String] with {
+  def run(ev: AccountEvent.Deposited): (State[Account], Abort[String]) ?=> Unit =
     update(a => Account(a.balance + ev.amount))
 }
 
-given EventSourcing.Transition[AccountEvent.Withdraw, Account, String] with {
-  def run(ev: AccountEvent.Withdraw): (State[Account], Abort[String]) ?=> Unit =
+given EventSourcing.Transition[AccountEvent.Withdrawn, Account, String] with {
+  def run(ev: AccountEvent.Withdrawn): (State[Account], Abort[String]) ?=> Unit =
     ensure(get.balance >= ev.amount, "Insufficient balance")
     update(a => Account(a.balance - ev.amount))
 }
