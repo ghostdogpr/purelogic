@@ -13,7 +13,7 @@ import EventSourcing.Transition
   * @tparam Err
   *   the type of errors that transitions can raise
   */
-trait EventSourcing[Ev, S, Err] {
+trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
   protected given state: State[S]
   protected given writer: Writer[Ev]
 
@@ -51,7 +51,7 @@ object EventSourcing {
     /**
       * Applies the event to the current state.
       */
-    def run(ev: Ev): (State[S], Abort[Err]) ?=> Unit
+    def run(ev: Ev): (State[S], Abort[Err]) ?-> Unit
   }
 
   /**

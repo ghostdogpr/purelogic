@@ -17,7 +17,7 @@ type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
 // --- Transition ---
 
 given EventSourcing.Transition[AccountEvent, Account, String] with {
-  def run(ev: AccountEvent): (State[Account], Abort[String]) ?=> Unit =
+  def run(ev: AccountEvent) =
     ev match {
       case AccountEvent.Deposited(amount) =>
         update(a => Account(a.balance + amount))
