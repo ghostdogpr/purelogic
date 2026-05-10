@@ -21,4 +21,8 @@ node_modules/
 project/project/metals.sbt
 .cursor/mcp.json
 docs/.vitepress/cache
+.claude/settings.local.json
+.claude/worktrees
+.vscode
 .claude
+.mcp.json
