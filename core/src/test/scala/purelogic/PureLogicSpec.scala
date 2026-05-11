@@ -400,7 +400,7 @@ class PureLogicSpec extends munit.FunSuite {
         } { case "handled" => -1 }
       }
     assertEquals(result, Left("unhandled"))
-    assertEquals(logs, Vector("before"))
+    assertEquals(logs, Vector("before", "inside"))
   }
 
   test("Recovery: recoverSomeKeepLog handles matching errors and keeps logs") {

@@ -151,14 +151,14 @@ object Abort {
 
     boundary[A] {
       val a = new Abort[E] {
-        def fail(e: E): Nothing = {
-          s.set(stateSnapshot)
-          if (resetLog) w.rollback(logSnapshot)
+        def fail(e: E): Nothing =
           handler.lift(e) match {
-            case Some(value) => break(value)
+            case Some(value) =>
+              s.set(stateSnapshot)
+              if (resetLog) w.rollback(logSnapshot)
+              break(value)
             case None        => abort.fail(e)
           }
-        }
       }
       f(using a)
     }
