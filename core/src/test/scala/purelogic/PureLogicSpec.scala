@@ -384,6 +384,20 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before", "inside"))
   }
 
+  test("Recovery: recover restores pre-snapshot writes even after clear inside the block") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recover {
+          clear
+          write("inside")
+          fail("oops")
+        }(_ => -1)
+      }
+    assertEquals(result, Right((0, -1)))
+    assertEquals(logs, Vector("before"))
+  }
+
   test("Recovery: recover can be used without State or Writer") {
     val result = Abort {
       recover {

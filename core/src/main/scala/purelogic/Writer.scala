@@ -29,8 +29,9 @@ trait Writer[-W] {
   def clear: Unit
 
   // Internal — used by recover
-  private[purelogic] def snapshot: Int
-  private[purelogic] def rollback(to: Int): Unit
+  private[purelogic] type Snapshot
+  private[purelogic] def snapshot: Snapshot
+  private[purelogic] def rollback(to: Snapshot): Unit
 
   /**
     * Runs a block in a nested scope, returning both the captured writes and the result. The captured writes are also
@@ -51,11 +52,15 @@ object Writer {
   def apply[W, A](body: Writer[W] ?=> A): (Vector[W], A) = {
     val buffer = ArrayBuffer[W]()
     val writer = new Writer[W] {
-      def write(w: W): Unit                          = buffer.addOne(w)
-      def writeAll(elems: IterableOnce[W]): Unit     = buffer.addAll(elems)
-      def clear: Unit                                = buffer.clear()
-      private[purelogic] def snapshot: Int           = buffer.length
-      private[purelogic] def rollback(to: Int): Unit = buffer.dropRightInPlace(buffer.length - to)
+      def write(w: W): Unit                      = buffer.addOne(w)
+      def writeAll(elems: IterableOnce[W]): Unit = buffer.addAll(elems)
+      def clear: Unit                            = buffer.clear()
+      private[purelogic] type Snapshot = Vector[W]
+      private[purelogic] def snapshot: Vector[W]           = buffer.toVector
+      private[purelogic] def rollback(to: Vector[W]): Unit = {
+        buffer.clear()
+        buffer.addAll(to)
+      }
     }
     val result = body(using writer)
     (buffer.toVector, result)
@@ -68,8 +73,9 @@ object Writer {
     def write(w: Nothing): Unit                      = ()
     def writeAll(elems: IterableOnce[Nothing]): Unit = ()
     def clear: Unit                                  = ()
-    private[purelogic] def snapshot: Int             = 0
-    private[purelogic] def rollback(to: Int): Unit   = ()
+    private[purelogic] type Snapshot = Unit
+    private[purelogic] def snapshot: Unit           = ()
+    private[purelogic] def rollback(to: Unit): Unit = ()
   }
 
   /**
