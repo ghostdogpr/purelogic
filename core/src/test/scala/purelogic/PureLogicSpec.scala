@@ -282,6 +282,26 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right(42))
   }
 
+  test("Abort: attempt does not hijack a break targeting a different outer Abort") {
+    val result: Either[String, Either[Throwable, Int]] =
+      Abort[String, Either[Throwable, Int]] {
+        Abort[Throwable, Int] {
+          attempt {
+            fail[String]("outer error")
+          }
+        }
+      }
+    assertEquals(result, Left("outer error"))
+  }
+
+  test("Abort: attempt does not catch InterruptedException") {
+    val ex                = new InterruptedException("interrupt")
+    var caught: Throwable = null
+    try Abort[Throwable, Int](attempt(throw ex))
+    catch { case t: Throwable => caught = t }
+    assert(caught eq ex)
+  }
+
   // ---------------------------------------------------------------------------
   // orFail extensions
   // ---------------------------------------------------------------------------
@@ -364,6 +384,20 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before", "inside"))
   }
 
+  test("Recovery: recover restores pre-snapshot writes even after clear inside the block") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recover {
+          clear
+          write("inside")
+          fail("oops")
+        }(_ => -1)
+      }
+    assertEquals(result, Right((0, -1)))
+    assertEquals(logs, Vector("before"))
+  }
+
   test("Recovery: recover can be used without State or Writer") {
     val result = Abort {
       recover {
@@ -371,6 +405,36 @@ class PureLogicSpec extends munit.FunSuite {
       }(_ => "recovered")
     }
     assertEquals(result, Right("recovered"))
+  }
+
+  test("Recovery: recover's state restore wins over a nested State.local finally") {
+    val (_, result) =
+      Logic.run(0, ()) {
+        recover {
+          set(10)
+          localState((_: Int) => 20) {
+            set(99)
+            fail[String]("oops")
+          }
+        }(_ => ())
+        get
+      }
+    assertEquals(result, Right((0, 0)))
+  }
+
+  test("Recovery: recoverSome handler observes the restored state") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        set(10)
+        write("before")
+        recoverSome {
+          set(99)
+          write("inside")
+          fail("handled")
+        } { case "handled" => get }
+      }
+    assertEquals(result, Right((10, 10)))
+    assertEquals(logs, Vector("before"))
   }
 
   test("Recovery: recoverSome handles matching errors and rolls back state and logs") {
@@ -388,7 +452,7 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before"))
   }
 
-  test("Recovery: recoverSome re-fails when the error is not handled") {
+  test("Recovery: recoverSome re-fails without rollback when the error is not handled") {
     val (logs, result) =
       Logic.run(0, ()) {
         set(10)
@@ -400,7 +464,22 @@ class PureLogicSpec extends munit.FunSuite {
         } { case "handled" => -1 }
       }
     assertEquals(result, Left("unhandled"))
-    assertEquals(logs, Vector("before"))
+    assertEquals(logs, Vector("before", "inside"))
+  }
+
+  test("Recovery: recoverSome unhandled error reaches outer scope with writes intact") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recoverKeepLog {
+          recoverSome {
+            write("inside")
+            fail[String]("unhandled")
+          } { case "handled" => -1 }
+        } { err => write(s"caught: $err"); -1 }
+      }
+    assertEquals(result, Right((0, -1)))
+    assertEquals(logs, Vector("before", "inside", "caught: unhandled"))
   }
 
   test("Recovery: recoverSomeKeepLog handles matching errors and keeps logs") {

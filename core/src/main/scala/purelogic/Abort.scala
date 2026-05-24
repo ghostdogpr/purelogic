@@ -2,6 +2,7 @@ package purelogic
 
 import scala.util.boundary
 import scala.util.boundary.break
+import scala.util.control.NonFatal
 
 /**
   * Short-circuits a computation with an error of type `E`.
@@ -95,11 +96,16 @@ object Abort {
     t.fold(abort.fail, identity)
 
   /**
-    * Runs a block and catches any `Throwable`, converting it to an `Abort` failure. Requires `Abort[Throwable]`.
+    * Runs a block and catches non-fatal throwables, converting them to an `Abort` failure. Fatal throwables
+    * (`VirtualMachineError`, `InterruptedException`, `ControlThrowable`, etc.) and `boundary.Break` propagate
+    * unchanged. Requires `Abort[Throwable]`.
     */
   def attempt[A](f: => A)(using abort: Abort[Throwable]): A =
     try f
-    catch { case e: Throwable => abort.fail(e) }
+    catch {
+      case b: boundary.Break[?] => throw b
+      case NonFatal(e)          => abort.fail(e)
+    }
 
   /**
     * Catches all errors and handles them with a function. Rolls back state and writes to the point before the failed
@@ -115,16 +121,18 @@ object Abort {
     doRecover(resetLog = false)(f)(handler)
 
   /**
-    * Catches only errors matched by a partial function. Unmatched errors are re-raised. Rolls back state and writes to
-    * the point before the failed block.
+    * Catches only errors matched by a partial function. When an error is matched, rolls back state and writes to the
+    * point before the failed block. Unmatched errors are re-raised without rollback, leaving state and writes intact
+    * for the outer scope to observe or handle.
     */
-  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
+  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = true)(f)(handler)
 
   /**
-    * Like `recoverSome`, but keeps the writes from the failed block instead of rolling them back.
+    * Like `recoverSome`, but keeps the writes from the matched block instead of rolling them back. Unmatched errors are
+    * re-raised without rollback (same as `recoverSome`).
     */
-  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
+  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = false)(f)(handler)
 
   private def doRecover[W, S, E, A](resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using w: Writer[W], s: State[S]): A = {
@@ -133,34 +141,31 @@ object Abort {
 
     val result = boundary[Either[E, A]] {
       val abort = new Abort[E] {
-        def fail(e: E): Nothing = {
-          s.set(stateSnapshot)
-          if (resetLog) w.rollback(logSnapshot)
-          break(Left(e))
-        }
+        def fail(e: E): Nothing = break(Left(e))
       }
       Right(f(using abort))
     }
 
     result match {
       case Right(value) => value
-      case Left(e)      => handler(e)
+      case Left(e)      =>
+        s.set(stateSnapshot)
+        if (resetLog) w.rollback(logSnapshot)
+        handler(e)
     }
   }
 
   private def doRecoverSome[W, S, E, A](
     resetLog: Boolean
-  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
+  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
     val result = boundary[Either[E, A]] {
       val a = new Abort[E] {
-        def fail(e: E): Nothing = {
-          s.set(stateSnapshot)
-          if (resetLog) w.rollback(logSnapshot)
-          break(Left(e))
-        }
+        def fail(e: E): Nothing =
+          if (handler.isDefinedAt(e)) break(Left(e))
+          else abort.fail(e)
       }
       Right(f(using a))
     }
@@ -168,10 +173,9 @@ object Abort {
     result match {
       case Right(value) => value
       case Left(e)      =>
-        handler.lift(e) match {
-          case Some(value) => value
-          case None        => abort.fail(e)
-        }
+        s.set(stateSnapshot)
+        if (resetLog) w.rollback(logSnapshot)
+        handler(e)
     }
   }
 }
