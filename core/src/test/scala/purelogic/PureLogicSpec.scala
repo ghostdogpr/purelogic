@@ -407,6 +407,21 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right("recovered"))
   }
 
+  test("Recovery: recoverSome handler observes the restored state") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        set(10)
+        write("before")
+        recoverSome {
+          set(99)
+          write("inside")
+          fail("handled")
+        } { case "handled" => get }
+      }
+    assertEquals(result, Right((10, 10)))
+    assertEquals(logs, Vector("before"))
+  }
+
   test("Recovery: recoverSome handles matching errors and rolls back state and logs") {
     val (logs, result) =
       Logic.run(0, ()) {
