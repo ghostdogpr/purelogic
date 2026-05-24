@@ -139,15 +139,19 @@ object Abort {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
-    boundary[A] {
+    val result = boundary[Either[E, A]] {
       val abort = new Abort[E] {
-        def fail(e: E): Nothing = {
-          s.set(stateSnapshot)
-          if (resetLog) w.rollback(logSnapshot)
-          break(handler(e))
-        }
+        def fail(e: E): Nothing = break(Left(e))
       }
-      f(using abort)
+      Right(f(using abort))
+    }
+
+    result match {
+      case Right(value) => value
+      case Left(e)      =>
+        s.set(stateSnapshot)
+        if (resetLog) w.rollback(logSnapshot)
+        handler(e)
     }
   }
 
@@ -157,18 +161,21 @@ object Abort {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
-    boundary[A] {
+    val result = boundary[Either[E, A]] {
       val a = new Abort[E] {
         def fail(e: E): Nothing =
-          if (handler.isDefinedAt(e)) {
-            s.set(stateSnapshot)
-            if (resetLog) w.rollback(logSnapshot)
-            break(handler(e))
-          } else {
-            abort.fail(e)
-          }
+          if (handler.isDefinedAt(e)) break(Left(e))
+          else abort.fail(e)
       }
-      f(using a)
+      Right(f(using a))
+    }
+
+    result match {
+      case Right(value) => value
+      case Left(e)      =>
+        s.set(stateSnapshot)
+        if (resetLog) w.rollback(logSnapshot)
+        handler(e)
     }
   }
 }
