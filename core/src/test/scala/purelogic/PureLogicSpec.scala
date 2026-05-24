@@ -407,6 +407,21 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right("recovered"))
   }
 
+  test("Recovery: recover's state restore wins over a nested State.local finally") {
+    val (_, result) =
+      Logic.run(0, ()) {
+        recover {
+          set(10)
+          localState((_: Int) => 20) {
+            set(99)
+            fail[String]("oops")
+          }
+        }(_ => ())
+        get
+      }
+    assertEquals(result, Right((0, 0)))
+  }
+
   test("Recovery: recoverSome handler observes the restored state") {
     val (logs, result) =
       Logic.run(0, ()) {
