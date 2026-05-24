@@ -70,7 +70,7 @@ val result: Int = Abort.extractTry(scala.util.Try(someOperation()))
 
 ### `attempt`
 
-Runs a block and catches any `Throwable`, converting it to an `Abort` failure. Requires `Abort[Throwable]`:
+Runs a block and catches non-fatal throwables, converting them to an `Abort` failure. Fatal throwables (`VirtualMachineError`, `InterruptedException`, `ControlThrowable`, etc.) and `boundary.Break` propagate unchanged. Requires `Abort[Throwable]`:
 
 ```scala
 val result: Int = Abort.attempt {

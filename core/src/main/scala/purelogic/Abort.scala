@@ -96,7 +96,9 @@ object Abort {
     t.fold(abort.fail, identity)
 
   /**
-    * Runs a block and catches any `Throwable`, converting it to an `Abort` failure. Requires `Abort[Throwable]`.
+    * Runs a block and catches non-fatal throwables, converting them to an `Abort` failure. Fatal throwables
+    * (`VirtualMachineError`, `InterruptedException`, `ControlThrowable`, etc.) and `boundary.Break` propagate
+    * unchanged. Requires `Abort[Throwable]`.
     */
   def attempt[A](f: => A)(using abort: Abort[Throwable]): A =
     try f
