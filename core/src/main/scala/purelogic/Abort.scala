@@ -2,6 +2,7 @@ package purelogic
 
 import scala.util.boundary
 import scala.util.boundary.break
+import scala.util.control.NonFatal
 
 /**
   * Short-circuits a computation with an error of type `E`.
@@ -99,7 +100,10 @@ object Abort {
     */
   def attempt[A](f: => A)(using abort: Abort[Throwable]): A =
     try f
-    catch { case e: Throwable => abort.fail(e) }
+    catch {
+      case b: boundary.Break[?] => throw b
+      case NonFatal(e)          => abort.fail(e)
+    }
 
   /**
     * Catches all errors and handles them with a function. Rolls back state and writes to the point before the failed
@@ -115,14 +119,16 @@ object Abort {
     doRecover(resetLog = false)(f)(handler)
 
   /**
-    * Catches only errors matched by a partial function. Unmatched errors are re-raised. Rolls back state and writes to
-    * the point before the failed block.
+    * Catches only errors matched by a partial function. When an error is matched, rolls back state and writes to the
+    * point before the failed block. Unmatched errors are re-raised without rollback, leaving state and writes intact
+    * for the outer scope to observe or handle.
     */
   def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = true)(f)(handler)
 
   /**
-    * Like `recoverSome`, but keeps the writes from the failed block instead of rolling them back.
+    * Like `recoverSome`, but keeps the writes from the matched block instead of rolling them back. Unmatched errors are
+    * re-raised without rollback (same as `recoverSome`).
     */
   def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = false)(f)(handler)

@@ -282,6 +282,26 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right(42))
   }
 
+  test("Abort: attempt does not hijack a break targeting a different outer Abort") {
+    val result: Either[String, Either[Throwable, Int]] =
+      Abort[String, Either[Throwable, Int]] {
+        Abort[Throwable, Int] {
+          attempt {
+            fail[String]("outer error")
+          }
+        }
+      }
+    assertEquals(result, Left("outer error"))
+  }
+
+  test("Abort: attempt does not catch InterruptedException") {
+    val ex                = new InterruptedException("interrupt")
+    var caught: Throwable = null
+    try Abort[Throwable, Int](attempt(throw ex))
+    catch { case t: Throwable => caught = t }
+    assert(caught eq ex)
+  }
+
   // ---------------------------------------------------------------------------
   // orFail extensions
   // ---------------------------------------------------------------------------
@@ -402,7 +422,7 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before"))
   }
 
-  test("Recovery: recoverSome re-fails when the error is not handled") {
+  test("Recovery: recoverSome re-fails without rollback when the error is not handled") {
     val (logs, result) =
       Logic.run(0, ()) {
         set(10)
@@ -415,6 +435,21 @@ class PureLogicSpec extends munit.FunSuite {
       }
     assertEquals(result, Left("unhandled"))
     assertEquals(logs, Vector("before", "inside"))
+  }
+
+  test("Recovery: recoverSome unhandled error reaches outer scope with writes intact") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recoverKeepLog {
+          recoverSome {
+            write("inside")
+            fail[String]("unhandled")
+          } { case "handled" => -1 }
+        } { err => write(s"caught: $err"); -1 }
+      }
+    assertEquals(result, Right((0, -1)))
+    assertEquals(logs, Vector("before", "inside", "caught: unhandled"))
   }
 
   test("Recovery: recoverSomeKeepLog handles matching errors and keeps logs") {
