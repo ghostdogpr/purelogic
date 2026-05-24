@@ -412,7 +412,7 @@ class PureLogicSpec extends munit.FunSuite {
             write("inside")
             fail[String]("unhandled")
           } { case "handled" => -1 }
-        }(err => { write(s"caught: $err"); -1 })
+        } { err => write(s"caught: $err"); -1 }
       }
     assertEquals(result, Right((0, -1)))
     assertEquals(logs, Vector("before", "inside", "caught: unhandled"))
