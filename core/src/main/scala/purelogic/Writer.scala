@@ -34,7 +34,9 @@ trait Writer[-W] {
 
   /**
     * Runs a block in a nested scope, returning both the captured writes and the result. The captured writes are also
-    * forwarded to the outer writer.
+    * forwarded to the outer writer. If the body aborts or throws, the captured writes are discarded; only writes
+    * produced by a nested `recover` (or similar handler) inside the body that completes normally reach the outer
+    * writer.
     */
   def capture[A](body: Writer[W] ?=> A): (Vector[W @uncheckedVariance], A) = {
     val (logs, result) = Writer(body)
