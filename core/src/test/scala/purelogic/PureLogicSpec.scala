@@ -408,7 +408,7 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before"))
   }
 
-  test("Recovery: recoverSome re-fails when the error is not handled") {
+  test("Recovery: recoverSome re-fails without rollback when the error is not handled") {
     val (logs, result) =
       Logic.run(0, ()) {
         set(10)
@@ -421,6 +421,21 @@ class PureLogicSpec extends munit.FunSuite {
       }
     assertEquals(result, Left("unhandled"))
     assertEquals(logs, Vector("before", "inside"))
+  }
+
+  test("Recovery: recoverSome unhandled error reaches outer scope with writes intact") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recoverKeepLog {
+          recoverSome {
+            write("inside")
+            fail[String]("unhandled")
+          } { case "handled" => -1 }
+        } { err => write(s"caught: $err"); -1 }
+      }
+    assertEquals(result, Right((0, -1)))
+    assertEquals(logs, Vector("before", "inside", "caught: unhandled"))
   }
 
   test("Recovery: recoverSomeKeepLog handles matching errors and keeps logs") {

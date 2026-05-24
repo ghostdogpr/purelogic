@@ -80,7 +80,7 @@ val result: Int = Abort.attempt {
 
 ## Recovery
 
-`Abort` provides several functions to **catch and handle errors** within a computation. Recovery **rolls back** state and writes to the point before the failed block.
+`Abort` provides several functions to **catch and handle errors** within a computation. When an error is handled, recovery **rolls back** state and writes to the point before the failed block.
 
 ### `recover`
 
@@ -100,7 +100,7 @@ Like `recover`, but **keeps the writes** from the failed block instead of rollin
 
 ### `recoverSome`
 
-Catches only errors matched by a **partial function**. Unmatched errors are re-raised:
+Catches only errors matched by a **partial function**. Matched errors trigger the usual rollback; unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to observe or handle:
 
 ```scala
 val result = Abort.recoverSome {
@@ -114,7 +114,7 @@ val result = Abort.recoverSome {
 
 ### `recoverSomeKeepLog`
 
-Like `recoverSome`, but **keeps the writes** from the failed block.
+Like `recoverSome`, but **keeps the writes** from the matched block. Unmatched errors are re-raised without rollback (same as `recoverSome`).
 
 ## Syntax extensions
 
