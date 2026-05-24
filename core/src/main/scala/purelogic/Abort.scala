@@ -2,6 +2,7 @@ package purelogic
 
 import scala.util.boundary
 import scala.util.boundary.break
+import scala.util.control.NonFatal
 
 /**
   * Short-circuits a computation with an error of type `E`.
@@ -99,7 +100,10 @@ object Abort {
     */
   def attempt[A](f: => A)(using abort: Abort[Throwable]): A =
     try f
-    catch { case e: Throwable => abort.fail(e) }
+    catch {
+      case b: boundary.Break[?] => throw b
+      case NonFatal(e)          => abort.fail(e)
+    }
 
   /**
     * Catches all errors and handles them with a function. Rolls back state and writes to the point before the failed

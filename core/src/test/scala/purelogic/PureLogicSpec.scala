@@ -282,6 +282,26 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right(42))
   }
 
+  test("Abort: attempt does not hijack a break targeting a different outer Abort") {
+    val result: Either[String, Either[Throwable, Int]] =
+      Abort[String, Either[Throwable, Int]] {
+        Abort[Throwable, Int] {
+          attempt {
+            fail[String]("outer error")
+          }
+        }
+      }
+    assertEquals(result, Left("outer error"))
+  }
+
+  test("Abort: attempt does not catch InterruptedException") {
+    val ex                  = new InterruptedException("interrupt")
+    var caught: Throwable   = null
+    try Abort[Throwable, Int](attempt(throw ex))
+    catch { case t: Throwable => caught = t }
+    assert(caught eq ex)
+  }
+
   // ---------------------------------------------------------------------------
   // orFail extensions
   // ---------------------------------------------------------------------------
