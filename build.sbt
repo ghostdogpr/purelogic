@@ -7,7 +7,7 @@ val zioPreludeVersion = "1.0.0-RC47"
 val kyoVersion        = "1.0.0-RC2"
 val turboliftVersion  = "0.126.0"
 val zioVersion        = "2.1.24"
-val munitVersion      = "1.3.0"
+val munitVersion      = "1.3.1"
 
 inThisBuild(
   List(
