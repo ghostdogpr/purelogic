@@ -1,4 +1,4 @@
-val scala3Version = "3.3.7"
+val scala3Version = "3.3.8"
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
