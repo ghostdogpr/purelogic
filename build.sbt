@@ -2,7 +2,7 @@ val scala3Version = "3.3.8"
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
-val catsMtlVersion    = "1.6.0"
+val catsMtlVersion    = "1.7.0"
 val zioPreludeVersion = "1.0.0-RC47"
 val kyoVersion        = "1.0.0-RC2"
 val turboliftVersion  = "0.126.0"
