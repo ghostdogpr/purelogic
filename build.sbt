@@ -81,7 +81,7 @@ lazy val commonSettings = Def.settings(
     "-deprecation",
     "-Werror",
     "-no-indent",
-    "-Wunused:imports,params,privates,implicits,explicits,nowarn",
+    "-Wunused:imports,params,privates,implicits,explicits",
     "-Wvalue-discard",
     "-Xkind-projector",
     "-language:experimental.captureChecking"
