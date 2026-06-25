@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
   * @tparam W
   *   the type of values to accumulate
   */
-trait Writer[-W] {
+trait Writer[-W] extends scala.caps.ExclusiveCapability {
 
   /**
     * Appends a single value to the log.
@@ -71,10 +71,10 @@ object Writer {
   /**
     * Default `Writer[Nothing]` instance that discards all writes.
     */
-  given Writer[Nothing] = new Writer[Nothing] {
-    def write(w: Nothing): Unit                      = ()
-    def writeAll(elems: IterableOnce[Nothing]): Unit = ()
-    def clear: Unit                                  = ()
+  given [W <: Nothing]: Writer[W] = new Writer[W] {
+    def write(w: W): Unit                      = ()
+    def writeAll(elems: IterableOnce[W]): Unit = ()
+    def clear: Unit                            = ()
     private[purelogic] type Snapshot = Unit
     private[purelogic] def snapshot: Unit           = ()
     private[purelogic] def rollback(to: Unit): Unit = ()
