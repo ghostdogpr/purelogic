@@ -25,6 +25,13 @@ inThisBuild(
 addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
 
+// sbt-git keys are read by sbt-ci-release to compute the version, but sbt 2's
+// per-project lintUnused check flags these ThisBuild-scoped keys as unused.
+Global / excludeLintKeys ++= Set(
+  com.github.sbt.git.SbtGit.GitKeys.gitDescribedVersion,
+  com.github.sbt.git.SbtGit.GitKeys.gitUncommittedChanges
+)
+
 lazy val root = project
   .in(file("."))
   .settings(publish / skip := true)
