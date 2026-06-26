@@ -1,4 +1,5 @@
 val scala3Version = "3.3.8"
+val scalaVersions = Seq(scala3Version)
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
@@ -21,28 +22,28 @@ inThisBuild(
   )
 )
 
-name := "purelogic"
-
-addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
-addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
 
 lazy val root = project
   .in(file("."))
   .settings(publish / skip := true)
-  .aggregate(core.jvm, core.js, core.native, examples, benchmarks)
+  .aggregate(core.projectRefs *)
+  .aggregate(examples, benchmarks)
 
-lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
-  .in(file("core"))
+lazy val core = (projectMatrix in file("core"))
   .settings(name := "purelogic")
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.scalameta" %%% "munit" % munitVersion % Test
+      "org.scalameta" %% "munit" % munitVersion % Test
     )
   )
-  .jsSettings(Test / fork := false)
-  .nativeSettings(Test / fork := false, bspEnabled := false)
+  .jvmPlatform(scalaVersions)
+  .jsPlatform(scalaVersions, Seq(Test / fork := false))
+  .nativePlatform(scalaVersions, Seq(Test / fork := false, bspEnabled := false))
+
+lazy val coreJVM = core.jvm(scala3Version)
 
 lazy val examples = project
   .in(file("examples"))
@@ -50,7 +51,7 @@ lazy val examples = project
   .settings(commonSettings)
   .settings(publish / skip := true)
   .settings(run / fork := true)
-  .dependsOn(core.jvm)
+  .dependsOn(coreJVM)
 
 lazy val benchmarks = project
   .in(file("benchmarks"))
@@ -71,7 +72,7 @@ lazy val benchmarks = project
       "io.github.marcinzh" %% "turbolift-core" % turboliftVersion
     )
   )
-  .dependsOn(core.jvm)
+  .dependsOn(coreJVM)
 
 lazy val commonSettings = Def.settings(
   scalacOptions ++= Seq(
