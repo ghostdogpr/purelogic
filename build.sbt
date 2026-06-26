@@ -10,24 +10,20 @@ val turboliftVersion  = "0.126.0"
 val zioVersion        = "2.1.24"
 val munitVersion      = "1.3.3"
 
-inThisBuild(
-  List(
-    scalaVersion := scala3Version,
-    organization := "com.github.ghostdogpr",
-    homepage     := Some(url("https://github.com/ghostdogpr/purelogic")),
-    licenses     := List(License.Apache2),
-    scmInfo      := Some(ScmInfo(url("https://github.com/ghostdogpr/purelogic/"), "scm:git:git@github.com:ghostdogpr/purelogic.git")),
-    developers   := List(Developer("ghostdogpr", "Pierre Ricadat", "ghostdogpr@gmail.com", url("https://github.com/ghostdogpr"))),
-    resolvers += Resolver.sonatypeCentralSnapshots
-  )
-)
+scalaVersion := scala3Version
+organization := "com.github.ghostdogpr"
+homepage     := Some(url("https://github.com/ghostdogpr/purelogic"))
+licenses     := List(License.Apache2)
+scmInfo      := Some(ScmInfo(url("https://github.com/ghostdogpr/purelogic/"), "scm:git:git@github.com:ghostdogpr/purelogic.git"))
+developers   := List(Developer("ghostdogpr", "Pierre Ricadat", "ghostdogpr@gmail.com", url("https://github.com/ghostdogpr")))
+resolvers += Resolver.sonatypeCentralSnapshots
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
 
-// sbt-git keys are read by sbt-ci-release to compute the version, but sbt 2's
-// per-project lintUnused check flags these ThisBuild-scoped keys as unused.
+// sbt-ci-release uses these keys, but sbt 2's lintUnused check flags them as unused.
 Global / excludeLintKeys ++= Set(
+  scmInfo,
   com.github.sbt.git.SbtGit.GitKeys.gitDescribedVersion,
   com.github.sbt.git.SbtGit.GitKeys.gitUncommittedChanges
 )
