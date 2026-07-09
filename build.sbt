@@ -23,9 +23,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck"
 
 // sbt-ci-release uses these keys, but sbt 2's lintUnused check flags them as unused.
 Global / excludeLintKeys ++= Set(
-  scmInfo,
-  com.github.sbt.git.SbtGit.GitKeys.gitDescribedVersion,
-  com.github.sbt.git.SbtGit.GitKeys.gitUncommittedChanges
+  scmInfo
 )
 
 lazy val root = project
