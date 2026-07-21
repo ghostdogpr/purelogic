@@ -467,6 +467,34 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before", "inside"))
   }
 
+  test("Writer: rollback restores the log to an earlier snapshot, keeping pre-snapshot writes") {
+    val (logs, _) =
+      Logic.run((), ()) {
+        write("before")
+        val snap = snapshot
+        write("inside")
+        rollback(snap)
+      }
+    assertEquals(logs, Vector("before"))
+  }
+
+  test("Writer: snapshot/rollback express discard-on-success, keep-on-escape recovery") {
+    def attempt(err: Option[String])(using Writer[String], State[Unit], Abort[String]): Boolean = {
+      val snap   = snapshot
+      val result = recoverSome {
+        write("inside")
+        err.foreach(fail)
+        true
+      } { case "handled" => false }
+      rollback(snap) // only reached when the block succeeds or the error is handled
+      result
+    }
+
+    assertEquals(Logic.run((), ())(attempt(None)), (Vector.empty[String], Right(((), true))))
+    assertEquals(Logic.run((), ())(attempt(Some("handled"))), (Vector.empty[String], Right(((), false))))
+    assertEquals(Logic.run((), ())(attempt(Some("committed"))), (Vector("inside"), Left("committed")))
+  }
+
   test("Recovery: recoverSome unhandled error reaches outer scope with writes intact") {
     val (logs, result) =
       Logic.run(0, ()) {
