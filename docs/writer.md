@@ -66,6 +66,36 @@ def process(using Writer[String]): Unit = {
 }
 ```
 
+### `snapshot` / `rollback`
+
+`snapshot` captures the current contents of the log, and `rollback` restores it to a captured snapshot, discarding any writes made since. Values accumulated **before** the snapshot are preserved, so this is a targeted reset rather than a full `clear`.
+
+```scala
+def process(using Writer[String]): Unit = {
+  write("before")
+  val snap = snapshot
+  write("inside")
+  rollback(snap)
+  // log: Vector("before")
+}
+```
+
+These are the low-level primitives that [`recover`](abort.md) builds on. Reach for them directly when you need custom recovery semantics that the built-in `recover` family does not cover. A common example is a lookahead that should leave no trace on success but keep its writes when a committed failure escapes:
+
+```scala
+def isSuccessful(block: Abort[String] ?=> Unit)(using Writer[String], State[Unit], Abort[String]): Boolean = {
+  val snap   = snapshot
+  val result = recoverSome {
+    block
+    true
+  } { case "recoverable" => false }
+  rollback(snap) // only reached on success or a handled failure
+  result
+}
+```
+
+If the block succeeds or fails recoverably, its writes are rolled back. If it fails with a committed error, the failure escapes before `rollback` runs, so those writes stay in the log for the outer scope to observe.
+
 ## Running
 
 `Writer(body)` returns a tuple of the **accumulated values** and the result:
