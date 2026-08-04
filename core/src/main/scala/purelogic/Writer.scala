@@ -28,10 +28,22 @@ trait Writer[-W] extends scala.caps.ExclusiveCapability {
     */
   def clear: Unit
 
-  // Internal — used by recover
-  private[purelogic] type Snapshot
-  private[purelogic] def snapshot: Snapshot
-  private[purelogic] def rollback(to: Snapshot): Unit
+  /**
+    * An opaque handle to the log's contents at a point in time, produced by [[snapshot]] and consumed by [[rollback]].
+    */
+  type Snapshot
+
+  /**
+    * Captures the current contents of the log so they can be restored later with [[rollback]]. This is the primitive
+    * that `recover` builds on; use it to implement custom recovery that resets writes to an earlier checkpoint.
+    */
+  def snapshot: Snapshot
+
+  /**
+    * Restores the log to the contents captured by an earlier [[snapshot]], discarding any writes made since. Values
+    * accumulated before the snapshot are preserved.
+    */
+  def rollback(to: Snapshot): Unit
 
   /**
     * Runs a block in a nested scope, returning both the captured writes and the result. The captured writes are also
@@ -57,9 +69,9 @@ object Writer {
       def write(w: W): Unit                      = buffer.addOne(w)
       def writeAll(elems: IterableOnce[W]): Unit = buffer.addAll(elems)
       def clear: Unit                            = buffer.clear()
-      private[purelogic] type Snapshot = Vector[W]
-      private[purelogic] def snapshot: Vector[W]           = buffer.toVector
-      private[purelogic] def rollback(to: Vector[W]): Unit = {
+      type Snapshot = Vector[W]
+      def snapshot: Vector[W]           = buffer.toVector
+      def rollback(to: Vector[W]): Unit = {
         buffer.clear()
         buffer.addAll(to)
       }
@@ -75,9 +87,9 @@ object Writer {
     def write(w: W): Unit                      = ()
     def writeAll(elems: IterableOnce[W]): Unit = ()
     def clear: Unit                            = ()
-    private[purelogic] type Snapshot = Unit
-    private[purelogic] def snapshot: Unit           = ()
-    private[purelogic] def rollback(to: Unit): Unit = ()
+    type Snapshot = Unit
+    def snapshot: Unit           = ()
+    def rollback(to: Unit): Unit = ()
   }
 
   /**
@@ -100,4 +112,14 @@ object Writer {
     * forwarded to the outer writer.
     */
   inline def capture[W, A](body: Writer[W] ?=> A)(using writer: Writer[W]): (Vector[W], A) = writer.capture(body)
+
+  /**
+    * Captures the current contents of the log so they can be restored later with [[rollback]].
+    */
+  inline def snapshot[W](using writer: Writer[W]): writer.Snapshot = writer.snapshot
+
+  /**
+    * Restores the log to the contents captured by an earlier [[snapshot]], discarding any writes made since.
+    */
+  inline def rollback[W](using writer: Writer[W])(to: writer.Snapshot): Unit = writer.rollback(to)
 }
