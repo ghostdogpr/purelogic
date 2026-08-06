@@ -1,4 +1,4 @@
-val scala3Version = "3.3.8"
+val scala3Version = "3.8.4"
 val scalaVersions = Seq(scala3Version)
 
 // dependencies for tests and benchmarks
@@ -61,7 +61,10 @@ lazy val benchmarks = project
   .settings(commonSettings)
   .settings(scalaVersion := "3.8.4")
   .settings(
-    scalacOptions := scalacOptions.value.filterNot(_ == "-Ykind-projector").filterNot(_ == "-Xfatal-warnings") :+ "-Xkind-projector"
+    scalacOptions := scalacOptions.value
+      .filterNot(_ == "-Ykind-projector")
+      .filterNot(_ == "-Xfatal-warnings")
+      .filterNot(_ == "-language:experimental.captureChecking") :+ "-Xkind-projector"
   )
   .settings(publish / skip := true)
   .settings(
@@ -78,11 +81,12 @@ lazy val benchmarks = project
 lazy val commonSettings = Def.settings(
   scalacOptions ++= Seq(
     "-deprecation",
-    "-Xfatal-warnings",
+    "-Werror",
     "-no-indent",
-    "-Wunused:imports,params,privates,implicits,explicits,nowarn",
+    "-Wunused:imports,params,privates,implicits,explicits",
     "-Wvalue-discard",
-    "-Ykind-projector"
+    "-Xkind-projector",
+    "-language:experimental.captureChecking"
   ),
   Test / fork := true
 )
