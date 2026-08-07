@@ -4,7 +4,7 @@ val scalaVersions = Seq(scala3Version)
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
 val catsMtlVersion    = "1.7.0"
-val zioPreludeVersion = "1.0.0-RC47"
+val zioPreludeVersion = "1.0.0-RC48"
 val kyoVersion        = "1.0.0-RC6"
 val turboliftVersion  = "0.126.0"
 val zioVersion        = "2.1.24"
