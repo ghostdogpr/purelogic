@@ -12,7 +12,7 @@ Add the following option to your application's `build.sbt`:
 scalacOptions += "-language:experimental.captureChecking"
 ```
 
-The examples below were verified with Scala 3.9.0. Capture checking is still an experimental Scala feature, so its syntax and diagnostics can change between compiler versions. See Scala's [capture checking documentation](https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html) for more detail.
+Capture checking is still an experimental Scala feature, so its syntax and diagnostics can change between compiler versions. See Scala's [capture checking documentation](https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html) for more detail.
 
 ## Keeping capabilities in scope
 
@@ -47,7 +47,7 @@ The same scope checks apply to `Reader`, `Writer`, `Abort`, and `EventSourcing`.
 
 ## Event-sourcing transitions
 
-An [event-sourcing transition](event-sourcing.md#defining-a-transition) returns `(State[S], Abort[Err]) ?-> Unit`. The `?->` arrow denotes a pure context function: it can use the State and Abort parameters it receives, but cannot capture additional tracked capabilities such as an enclosing Reader or Writer.
+An [event-sourcing transition](event-sourcing.md#defining-a-transition) returns `(State[S], Abort[Err]) ?-> Unit`. The `?->` arrow denotes a pure context function: it can use the `State` and `Abort` parameters it receives, but cannot capture additional tracked capabilities such as an enclosing `Reader` or `Writer`.
 
 Leave the result type of `Transition.run` inferred, as in the event-sourcing examples. If you write the type explicitly with capture checking enabled, use `?->` rather than `?=>`.
 
@@ -55,6 +55,6 @@ This restriction is not a proof of determinism. Calls to clocks, random-number g
 
 ## Separation checking
 
-Scala's separate `-language:experimental.separationChecking` option is not supported by PureLogic yet. State, Writer, and EventSourcing are declared exclusive, but nested operations such as `recover` pass the same capability both as a context parameter and inside the body. Separation checking rejects this overlap.
+Scala's separate `-language:experimental.separationChecking` option is not supported by PureLogic yet. `State`, `Writer`, and `EventSourcing` are declared exclusive, but nested operations such as `recover` pass the same capability both as a context parameter and inside the body. Separation checking rejects this overlap.
 
-Capture checking alone does not make State or Writer safe to share across threads. Keep each computation's mutable capabilities within that computation, as described in the [thread-safety FAQ](faq.md#is-purelogic-thread-safe).
+Capture checking alone does not make `State` or `Writer` safe to share across threads. Keep each computation's mutable capabilities within that computation, as described in the [thread-safety FAQ](faq.md#is-purelogic-thread-safe).

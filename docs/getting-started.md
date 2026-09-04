@@ -146,8 +146,6 @@ For more details about each of the capabilities, check out the [Capabilities](ca
 
 ## Next steps
 
-Read [Capture checking](capture-checking.md) to enable optional compiler checks that keep capabilities within their scope.
-
 Make sure to read the [Why PureLogic?](why-purelogic.md) page to understand when this library is useful and see a comparison with traditional monadic approaches.
 
 Check out the [examples](https://github.com/ghostdogpr/purelogic/tree/master/examples/src/main/scala/examples) in GitHub to see how to use the library in practice.
@@ -155,3 +153,5 @@ Check out the [examples](https://github.com/ghostdogpr/purelogic/tree/master/exa
 If you want to know more about direct-style effects using capabilities, I recommend these two blog posts:
 - [Effects as Capabilities](https://nrinaudo.github.io/articles/capabilities.html) by Nicolas Rinaudo
 - [The Effect Pattern and Effect Systems in Scala](https://rockthejvm.com/articles/the-effect-pattern) by Riccardo Cardin
+
+Read [Capture checking](capture-checking.md) to enable optional compiler checks that keep capabilities within their scope.

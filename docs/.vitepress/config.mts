@@ -34,7 +34,7 @@ export default defineConfig({
               { text: 'Event Sourcing', link: '/event-sourcing' },
             ]
           },
-          { text: 'Capture checking', link: '/capture-checking' }
+          { text: 'Capture Checking', link: '/capture-checking' }
         ]
       },
       {
