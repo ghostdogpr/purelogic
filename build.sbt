@@ -1,4 +1,4 @@
-val scala3Version = "3.8.4"
+val scala3Version = "3.9.0"
 val scalaVersions = Seq(scala3Version)
 
 // dependencies for tests and benchmarks
@@ -59,7 +59,7 @@ lazy val benchmarks = project
   .enablePlugins(JmhPlugin)
   .settings(name := "purelogic-benchmarks")
   .settings(commonSettings)
-  .settings(scalaVersion := "3.8.4")
+  .settings(scalaVersion := "3.9.0")
   .settings(
     scalacOptions := scalacOptions.value
       .filterNot(_ == "-Ykind-projector")
