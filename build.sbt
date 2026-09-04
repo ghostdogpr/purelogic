@@ -8,7 +8,7 @@ val zioPreludeVersion = "1.0.0-RC48"
 val kyoVersion        = "1.0.0-RC6"
 val turboliftVersion  = "0.128.0"
 val zioVersion        = "2.1.24"
-val munitVersion      = "1.3.5"
+val munitVersion      = "1.3.6"
 
 scalaVersion := scala3Version
 organization := "com.github.ghostdogpr"
