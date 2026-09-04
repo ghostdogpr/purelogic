@@ -27,3 +27,4 @@ docs/.vitepress/cache
 .claude
 .mcp.json
 build.sbt.semanticdb
+docs/.vitepress/dist
