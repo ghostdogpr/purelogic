@@ -153,3 +153,5 @@ Check out the [examples](https://github.com/ghostdogpr/purelogic/tree/master/exa
 If you want to know more about direct-style effects using capabilities, I recommend these two blog posts:
 - [Effects as Capabilities](https://nrinaudo.github.io/articles/capabilities.html) by Nicolas Rinaudo
 - [The Effect Pattern and Effect Systems in Scala](https://rockthejvm.com/articles/the-effect-pattern) by Riccardo Cardin
+
+Read [Capture checking](capture-checking.md) to enable optional compiler checks that keep capabilities within their scope.

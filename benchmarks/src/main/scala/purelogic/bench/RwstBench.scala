@@ -180,7 +180,7 @@ class RwstBench {
         .handleWith(TL.W.handlers.local)
         .handleWith(TL.S.handlers.local(initialState))
         .handleWith(TL.R.handlers.default(env))
-        .handleWith(TL.E.handlers.first)
+        .handleWith(TL.E.handlers.firstSeq)
         .run
     result match {
       case Right((_, state)) => state

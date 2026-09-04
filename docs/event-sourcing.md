@@ -23,7 +23,7 @@ enum AccountEvent {
 }
 
 given EventSourcing.Transition[AccountEvent, Account, String] with {
-  def run(ev: AccountEvent): (State[Account], Abort[String]) ?=> Unit =
+  def run(ev: AccountEvent) =
     ev match {
       case AccountEvent.Deposited(amount) =>
         update(a => Account(a.balance + amount))
@@ -33,6 +33,8 @@ given EventSourcing.Transition[AccountEvent, Account, String] with {
     }
 }
 ```
+
+For reliable replay, base each transition on the event and current state. Read clocks or generate random values before recording an event, and include any values the transition needs in that event. Optional compiler checks for transition dependencies are explained in [Capture checking](capture-checking.md#event-sourcing-transitions).
 
 ## Writing events
 
@@ -118,12 +120,12 @@ object AccountEvent {
 }
 
 given EventSourcing.Transition[AccountEvent.Deposited, Account, String] with {
-  def run(ev: AccountEvent.Deposited): (State[Account], Abort[String]) ?=> Unit =
+  def run(ev: AccountEvent.Deposited) =
     update(a => Account(a.balance + ev.amount))
 }
 
 given EventSourcing.Transition[AccountEvent.Withdrawn, Account, String] with {
-  def run(ev: AccountEvent.Withdrawn): (State[Account], Abort[String]) ?=> Unit =
+  def run(ev: AccountEvent.Withdrawn) =
     ensure(get.balance >= ev.amount, "Insufficient balance")
     update(a => Account(a.balance - ev.amount))
 }

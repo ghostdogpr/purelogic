@@ -29,9 +29,3 @@ It depends on the **nesting order**. With the default `Logic.run` order, `Writer
 ## Is `State` really pure?
 
 Yes. While `State` uses **mutable variables internally**, this mutation is completely **scoped** within the `State.apply` or `Logic.run` call. From the outside, the function is pure: same inputs always produce same outputs, with no observable side effects. This is the same approach used by Haskell's `ST` monad.
-
-## What about capture checking?
-
-PureLogic's design based on **context functions and capabilities** is a natural fit for Scala's upcoming **capture checking** feature. Capture checking will allow the compiler to verify that capabilities don't escape their scope — for example, ensuring that a `State` reference isn't leaked outside of `Logic.run`.
-
-PureLogic is **ready** for capture checking and it will be added when capture checking becomes more stable in future versions of Scala.

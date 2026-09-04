@@ -8,7 +8,7 @@ package purelogic
   * @tparam S
   *   the type of the state
   */
-trait StateReader[+S] {
+trait StateReader[+S] extends scala.caps.ExclusiveCapability {
 
   /**
     * Returns the current state.
@@ -29,7 +29,7 @@ trait StateReader[+S] {
   * @tparam S
   *   the type of the state
   */
-trait StateWriter[-S] {
+trait StateWriter[-S] extends scala.caps.ExclusiveCapability {
 
   /**
     * Replaces the state with a new value.
@@ -87,7 +87,7 @@ trait State[S] extends StateReader[S] with StateWriter[S] {
     * Runs a block that operates on a subset of the state. Reads and writes to the focused state are reflected in the
     * outer state.
     */
-  def focus[A, B](getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B = {
+  def focus[A, B](getFocus: S -> A)(setFocus: (S, A) -> S)(body: State[A] ?=> B): B = {
     val outer = this
     val state = new State[A] {
       def get: A          = getFocus(outer.get)
@@ -116,9 +116,9 @@ object State {
   /**
     * Default `State[Unit]` instance that does nothing.
     */
-  given State[Unit] = new State[Unit] {
-    def get: Unit          = ()
-    def set(s: Unit): Unit = ()
+  given [S <: Unit]: State[S] = new State[S] {
+    def get: S          = ().asInstanceOf[S]
+    def set(s: S): Unit = ()
   }
 
   /**
@@ -170,6 +170,6 @@ object State {
     * Runs a block that operates on a subset of the state. Reads and writes to the focused state are reflected in the
     * outer state.
     */
-  inline def focusState[S, A, B](using s: State[S])(getFocus: S => A)(setFocus: (S, A) => S)(body: State[A] ?=> B): B =
+  inline def focusState[S, A, B](using s: State[S])(getFocus: S -> A)(setFocus: (S, A) -> S)(body: State[A] ?=> B): B =
     s.focus(getFocus)(setFocus)(body)
 }

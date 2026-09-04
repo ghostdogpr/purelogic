@@ -100,7 +100,7 @@ Like `recover`, but **keeps the writes** from the failed block instead of rollin
 
 ### `recoverSome`
 
-Catches only errors matched by a **partial function**. Matched errors trigger the usual rollback; unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to observe or handle:
+Catches only errors matched by a **partial function**. Matched errors trigger the usual rollback. The handler, including any pattern guards, runs once, on the restored state and writes. Unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to observe or handle:
 
 ```scala
 val result = Abort.recoverSome {

@@ -33,7 +33,8 @@ export default defineConfig({
               { text: 'Abort', link: '/abort' },
               { text: 'Event Sourcing', link: '/event-sourcing' },
             ]
-          }
+          },
+          { text: 'Capture Checking', link: '/capture-checking' }
         ]
       },
       {

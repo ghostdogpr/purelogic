@@ -467,6 +467,78 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before", "inside"))
   }
 
+  test("Recovery: recoverSome guards are evaluated once, on the restored state") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        recoverSome[String, Int, String, Int] {
+          try fail("boom")
+          finally set(1)
+        } {
+          case "boom" if get[Int] == 0 => 42
+        }
+      }
+    assertEquals(result, Right((0, 42)))
+    assertEquals(logs, Vector.empty)
+  }
+
+  test("Recovery: recoverSome guard that does not match leaves state and writes as they were at the failure") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        val inner = Abort[String, Int] {
+          recoverSome[String, Int, String, Int] {
+            set(5)
+            write("inside")
+            fail("boom")
+          } {
+            case "boom" if get[Int] == 99 => 42
+          }
+        }
+        (inner, get)
+      }
+    assertEquals(result, Right((5, (Left("boom"), 5))))
+    assertEquals(logs, Vector("inside"))
+  }
+
+  test("Recovery: recoverSomeKeepLog discards state and writes made by a guard that does not match") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        val inner = Abort[String, Int] {
+          recoverSomeKeepLog[String, Int, String, Int] {
+            set(5)
+            write("body")
+            fail("boom")
+          } {
+            case "boom" if { set(99); write("guard"); false } => 42
+          }
+        }
+        (inner, get)
+      }
+    assertEquals(result, Right((5, (Left("boom"), 5))))
+    assertEquals(logs, Vector("body"))
+  }
+
+  test("Capture checking: lambdas passed to update, modify and read may use other capabilities") {
+    val (logs, result) =
+      Logic.run(1, 10) {
+        update(_ + read)
+        val doubled = modify[Int, Int](s => (s * 2, s))
+        write(read(_ + doubled))
+        get
+      }
+    assertEquals(result, Right((11, 11)))
+    assertEquals(logs, Vector(32))
+  }
+
+  test("Capture checking: writeAll accepts an iterator that captures a capability") {
+    val (logs, result) =
+      Logic.run((), 5) {
+        writeAll(Iterator.tabulate(2)(i => i + read))
+        writeAll(List(0, 1).iterator.map(_ * read))
+      }
+    assertEquals(result, Right(((), ())))
+    assertEquals(logs, Vector(5, 6, 0, 5))
+  }
+
   test("Writer: rollback restores the log to an earlier snapshot, keeping pre-snapshot writes") {
     val (logs, _) =
       Logic.run((), ()) {

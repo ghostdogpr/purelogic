@@ -8,7 +8,7 @@ package purelogic
   * @tparam R
   *   the type of the value to read
   */
-trait Reader[+R] {
+trait Reader[+R] extends scala.caps.SharedCapability {
 
   /**
     * Returns the current reader value.
@@ -46,8 +46,8 @@ object Reader {
   /**
     * Default `Reader[Unit]` instance that always returns `()`.
     */
-  given Reader[Unit] = new Reader[Unit] {
-    def read: Unit = ()
+  given [R <: Unit]: Reader[R] = new Reader[R] {
+    def read: R = ().asInstanceOf[R]
   }
 
   /**

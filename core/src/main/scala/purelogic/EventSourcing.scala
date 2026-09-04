@@ -13,7 +13,7 @@ import EventSourcing.Transition
   * @tparam Err
   *   the type of errors that transitions can raise
   */
-trait EventSourcing[Ev, S, Err] {
+trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
   protected given state: State[S]
   protected given writer: Writer[Ev]
 
@@ -30,7 +30,7 @@ trait EventSourcing[Ev, S, Err] {
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
-  def replayEvents(events: Iterable[Ev])(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
+  def replayEvents(events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
     events.foreach(transition.run)
 }
 
@@ -51,7 +51,7 @@ object EventSourcing {
     /**
       * Applies the event to the current state.
       */
-    def run(ev: Ev): (State[S], Abort[Err]) ?=> Unit
+    def run(ev: Ev): (State[S], Abort[Err]) ?-> Unit
   }
 
   /**
@@ -80,7 +80,7 @@ object EventSourcing {
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
-  inline def replayEvents[Ev, S, Err](events: Iterable[Ev])(using transition: Transition[Ev, S, Err])(
+  inline def replayEvents[Ev, S, Err](events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],
     abort: Abort[Err]
   ): Unit =

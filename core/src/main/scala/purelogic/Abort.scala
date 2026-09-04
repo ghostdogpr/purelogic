@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
   * @tparam E
   *   the type of error
   */
-trait Abort[-E] {
+trait Abort[-E] extends scala.caps.Control {
 
   /**
     * Aborts the computation with the given error.
@@ -60,8 +60,8 @@ object Abort {
   /**
     * Default `Abort[Nothing]` instance that can never fail.
     */
-  given Abort[Nothing] = new Abort[Nothing] {
-    def fail(e: Nothing): Nothing = e
+  given [E <: Nothing]: Abort[E] = new Abort[E] {
+    def fail(e: E): Nothing = e
   }
 
   /**
@@ -122,17 +122,18 @@ object Abort {
 
   /**
     * Catches only errors matched by a partial function. When an error is matched, rolls back state and writes to the
-    * point before the failed block. Unmatched errors are re-raised without rollback, leaving state and writes intact
-    * for the outer scope to observe or handle.
+    * point before the failed block. The handler, including any pattern guards, is evaluated once, on the restored state
+    * and writes. Unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to
+    * observe or handle.
     */
-  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
+  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = true)(f)(handler)
 
   /**
     * Like `recoverSome`, but keeps the writes from the matched block instead of rolling them back. Unmatched errors are
     * re-raised without rollback (same as `recoverSome`).
     */
-  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using Writer[W], State[S], Abort[E]): A =
+  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = false)(f)(handler)
 
   private def doRecover[W, S, E, A](resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using w: Writer[W], s: State[S]): A = {
@@ -157,15 +158,13 @@ object Abort {
 
   private def doRecoverSome[W, S, E, A](
     resetLog: Boolean
-  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A])(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
+  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
     val stateSnapshot = s.get
     val logSnapshot   = w.snapshot
 
     val result = boundary[Either[E, A]] {
       val a = new Abort[E] {
-        def fail(e: E): Nothing =
-          if (handler.isDefinedAt(e)) break(Left(e))
-          else abort.fail(e)
+        def fail(e: E): Nothing = break(Left(e))
       }
       Right(f(using a))
     }
@@ -173,9 +172,18 @@ object Abort {
     result match {
       case Right(value) => value
       case Left(e)      =>
+        val failedState = s.get
+        val failedLog   = w.snapshot
         s.set(stateSnapshot)
         if (resetLog) w.rollback(logSnapshot)
-        handler(e)
+        handler.applyOrElse(
+          e,
+          (unmatched: E) => {
+            s.set(failedState)
+            w.rollback(failedLog)
+            abort.fail(unmatched)
+          }
+        )
     }
   }
 }
