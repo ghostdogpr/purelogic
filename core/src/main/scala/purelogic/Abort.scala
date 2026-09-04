@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
   * @tparam E
   *   the type of error
   */
-trait Abort[-E] extends scala.caps.ExclusiveCapability {
+trait Abort[-E] extends scala.caps.Control {
 
   /**
     * Aborts the computation with the given error.
@@ -122,8 +122,9 @@ object Abort {
 
   /**
     * Catches only errors matched by a partial function. When an error is matched, rolls back state and writes to the
-    * point before the failed block. Unmatched errors are re-raised without rollback, leaving state and writes intact
-    * for the outer scope to observe or handle.
+    * point before the failed block. The handler, including any pattern guards, is evaluated once, on the restored state
+    * and writes. Unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to
+    * observe or handle.
     */
   def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
     doRecoverSome(resetLog = true)(f)(handler)
@@ -163,9 +164,7 @@ object Abort {
 
     val result = boundary[Either[E, A]] {
       val a = new Abort[E] {
-        def fail(e: E): Nothing =
-          if (handler.isDefinedAt(e)) break(Left(e))
-          else abort.fail(e)
+        def fail(e: E): Nothing = break(Left(e))
       }
       Right(f(using a))
     }
@@ -173,9 +172,18 @@ object Abort {
     result match {
       case Right(value) => value
       case Left(e)      =>
+        val failedState = s.get
+        val failedLog   = w.snapshot
         s.set(stateSnapshot)
         if (resetLog) w.rollback(logSnapshot)
-        handler(e)
+        handler.applyOrElse(
+          e,
+          (unmatched: E) => {
+            s.set(failedState)
+            w.rollback(failedLog)
+            abort.fail(unmatched)
+          }
+        )
     }
   }
 }

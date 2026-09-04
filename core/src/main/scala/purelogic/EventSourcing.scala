@@ -30,7 +30,7 @@ trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
-  def replayEvents(events: Iterable[Ev])(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
+  def replayEvents(events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
     events.foreach(transition.run)
 }
 
@@ -80,7 +80,7 @@ object EventSourcing {
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
     * writer, making this suitable for rehydrating state from a persisted event log.
     */
-  inline def replayEvents[Ev, S, Err](events: Iterable[Ev])(using transition: Transition[Ev, S, Err])(
+  inline def replayEvents[Ev, S, Err](events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],
     abort: Abort[Err]
   ): Unit =

@@ -21,7 +21,7 @@ trait Writer[-W] extends scala.caps.ExclusiveCapability {
   /**
     * Appends multiple values to the log at once.
     */
-  def writeAll(elems: IterableOnce[W]): Unit
+  def writeAll(elems: IterableOnce[W]^): Unit
 
   /**
     * Clears all accumulated values.
@@ -66,9 +66,9 @@ object Writer {
   def apply[W, A](body: Writer[W] ?=> A): (Vector[W], A) = {
     val buffer = ArrayBuffer[W]()
     val writer = new Writer[W] {
-      def write(w: W): Unit                      = buffer.addOne(w)
-      def writeAll(elems: IterableOnce[W]): Unit = buffer.addAll(elems)
-      def clear: Unit                            = buffer.clear()
+      def write(w: W): Unit                       = buffer.addOne(w)
+      def writeAll(elems: IterableOnce[W]^): Unit = buffer.addAll(elems)
+      def clear: Unit                             = buffer.clear()
       type Snapshot = Vector[W]
       def snapshot: Vector[W]           = buffer.toVector
       def rollback(to: Vector[W]): Unit = {
@@ -84,9 +84,9 @@ object Writer {
     * Default `Writer[Nothing]` instance that discards all writes.
     */
   given [W <: Nothing]: Writer[W] = new Writer[W] {
-    def write(w: W): Unit                      = ()
-    def writeAll(elems: IterableOnce[W]): Unit = ()
-    def clear: Unit                            = ()
+    def write(w: W): Unit                       = ()
+    def writeAll(elems: IterableOnce[W]^): Unit = ()
+    def clear: Unit                             = ()
     type Snapshot = Unit
     def snapshot: Unit           = ()
     def rollback(to: Unit): Unit = ()
@@ -100,7 +100,7 @@ object Writer {
   /**
     * Appends multiple values to the log at once.
     */
-  inline def writeAll[W](elems: IterableOnce[W])(using writer: Writer[W]): Unit = writer.writeAll(elems)
+  inline def writeAll[W](elems: IterableOnce[W]^)(using writer: Writer[W]): Unit = writer.writeAll(elems)
 
   /**
     * Clears all accumulated values.
