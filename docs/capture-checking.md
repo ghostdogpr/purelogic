@@ -1,6 +1,6 @@
 # Capture checking
 
-PureLogic supports Scala's experimental capture checking. When you enable it in your application, the compiler checks that a capability cannot escape the scope that provides it. For example, code cannot return a closure that keeps modifying a `State` after `State.apply` or `Logic.run` has finished.
+PureLogic supports Scala's experimental capture checking. When you enable it in your application, the compiler checks that a capability cannot escape the scope that provides it. A returned closure can retain a capability directly, while a lazy computation can retain one indirectly. The compiler rejects either form when it outlives the computation that provides the capability.
 
 PureLogic itself is compiled with capture checking enabled. You can use the library without enabling it in your application; the additional compiler checks are optional.
 
@@ -16,34 +16,35 @@ Capture checking is still an experimental Scala feature, so its syntax and diagn
 
 ## Keeping capabilities in scope
 
-A `State` capability gives code access to the state of one computation. Returning a function that captures it would let callers keep changing that state after the computation has returned:
+A capability can escape through any returned value that retains it. Returning a closure that calls `State.update` is a direct example. The same leak can be harder to spot in a lazy collection.
+
+Suppose `orders` is a `List[Order]` and `Order.toCsv` serializes one order. The following export appears to record an audit entry while generating each CSV row:
 
 ```scala
-import purelogic.State
+import purelogic.{Writer, write}
 
-val (finalState, incrementLater) = State(0) {
-  val state = summon[State[Int]]
-  () => {
-    state.update(_ + 1)
-    state.get
+val (audit, csvRows) = Writer {
+  orders.iterator.map { order =>
+    write(s"exported ${order.id}")
+    order.toCsv
   }
 }
 ```
 
-Without capture checking, this compiles: `finalState` is `0`, but calls to `incrementLater()` return `1`, then `2`. With capture checking enabled, the compiler rejects the closure because the captured capability outlives its scope.
+`Iterator.map` is lazy, so `Writer` returns an empty `audit` before the mapping runs. Consuming `csvRows` later writes to an internal log whose result has already been returned. Those entries never appear in `audit`.
 
-Returning an ordinary value is allowed. A function can also capture a value read from the state, without retaining the capability itself:
+With capture checking enabled, the compiler rejects this code because `csvRows` would carry the `Writer` capability outside its scope. Materialize the rows before the `Writer` block returns:
 
 ```scala
-val (finalState, readLater) = State(0) {
-  val value = summon[State[Int]].get
-  () => value
+val (audit, csvRows) = Writer {
+  orders.iterator.map { order =>
+    write(s"exported ${order.id}")
+    order.toCsv
+  }.toVector
 }
-
-readLater() // 0
 ```
 
-The same scope checks apply to `Reader`, `Writer`, `Abort`, and `EventSourcing`. Nested computations can still use capabilities supplied by an enclosing scope.
+`Writer` is only one case. Capture checking also rejects returned closures and other values that retain a `Reader`, `State`, `Abort`, or `EventSourcing` capability. Nested computations can still use capabilities supplied by an enclosing scope.
 
 ## Event-sourcing transitions
 
