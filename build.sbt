@@ -20,6 +20,7 @@ resolvers += Resolver.sonatypeCentralSnapshots
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt Test/scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck")
+addCommandAlias("mima", "core/mimaReportBinaryIssues")
 
 // sbt-ci-release uses these keys, but sbt 2's lintUnused check flags them as unused.
 Global / excludeLintKeys ++= Set(
@@ -40,7 +41,7 @@ lazy val core = (projectMatrix in file("core"))
       "org.scalameta" %% "munit" % munitVersion % Test
     )
   )
-  .jvmPlatform(scalaVersions)
+  .jvmPlatform(scalaVersions, mimaSettings)
   .jsPlatform(scalaVersions, Seq(Test / fork := false))
   .nativePlatform(scalaVersions, Seq(Test / fork := false, bspEnabled := false))
 
@@ -89,4 +90,9 @@ lazy val commonSettings = Def.settings(
     "-language:experimental.captureChecking"
   ),
   Test / fork := true
+)
+
+// The JS and Native rows share the same sources, so checking the JVM artifact is enough.
+lazy val mimaSettings = Def.settings(
+  mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet
 )
