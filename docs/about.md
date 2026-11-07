@@ -8,4 +8,6 @@
 - **[Proteus](https://github.com/ghostdogpr/proteus)** — A code-first Protobuf and gRPC library for Scala
 - **[Sage](https://github.com/ghostdogpr/sage)** — A modern and fast Redis/Valkey client for Scala
 
+See them all on the [ghostdogpr stack](https://ghostdogpr.github.io/) page.
+
 If you find PureLogic useful, consider [sponsoring me on GitHub](https://github.com/sponsors/ghostdogpr) to support continued development.
