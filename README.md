@@ -12,5 +12,3 @@ It provides an **opinionated way to write pure domain logic** in Scala, using a 
 It has **zero dependencies** and is available for Scala 3.9.x LTS and later versions for Scala JVM, Scala.js, and Scala Native.
 
 ### Consult the [Documentation](https://ghostdogpr.github.io/purelogic/) to learn how to use PureLogic.
-
-### Part of the [ghostdogpr stack](https://ghostdogpr.github.io/).
