@@ -41,7 +41,7 @@ lazy val core = (projectMatrix in file("core"))
       "org.scalameta" %% "munit" % munitVersion % Test
     )
   )
-  .jvmPlatform(scalaVersions, mimaSettings)
+  .jvmPlatform(scalaVersions, jvmSettings ++ mimaSettings)
   .jsPlatform(scalaVersions, Seq(Test / fork := false))
   .nativePlatform(scalaVersions, Seq(Test / fork := false, bspEnabled := false))
 
@@ -50,7 +50,7 @@ lazy val coreJVM = core.jvm(scala3Version)
 lazy val examples = project
   .in(file("examples"))
   .settings(name := "purelogic-examples")
-  .settings(commonSettings)
+  .settings(commonSettings, jvmSettings)
   .settings(publish / skip := true)
   .settings(run / fork := true)
   .dependsOn(coreJVM)
@@ -59,7 +59,7 @@ lazy val benchmarks = project
   .in(file("benchmarks"))
   .enablePlugins(JmhPlugin)
   .settings(name := "purelogic-benchmarks")
-  .settings(commonSettings)
+  .settings(commonSettings, jvmSettings)
   .settings(scalaVersion := "3.9.0")
   .settings(
     scalacOptions := scalacOptions.value
@@ -90,6 +90,11 @@ lazy val commonSettings = Def.settings(
     "-language:experimental.captureChecking"
   ),
   Test / fork := true
+)
+
+// Scala 3.9 requires JDK 17, so the JVM artifacts target it.
+lazy val jvmSettings = Def.settings(
+  scalacOptions ++= Seq("-release", "17")
 )
 
 // The JS and Native rows share the same sources, so checking the JVM artifact is enough.
