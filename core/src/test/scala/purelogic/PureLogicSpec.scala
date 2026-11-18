@@ -612,6 +612,74 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before", "inside"))
   }
 
+  test("Recovery: nested recover blocks each roll back to their own entry point") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("before")
+        recover {
+          write("outer")
+          recover {
+            write("inner")
+            fail("inner-err")
+          }(e => write(s"handled $e"))
+          write("outer again")
+        }(_ => ())
+        recover {
+          write("dropped outer")
+          recover(write("dropped inner"))(_ => ())
+          fail("outer-err")
+        }(e => write(s"handled $e"))
+      }
+    assertEquals(result, Right((0, ())))
+    assertEquals(logs, Vector("before", "outer", "handled inner-err", "outer again", "handled outer-err"))
+  }
+
+  test("Recovery: a failed outer block undoes a clear made by an inner block that succeeded") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("a")
+        recover {
+          write("b")
+          recover(clear)(_ => ())
+          write("c")
+          fail("outer-err")
+        }(_ => ())
+        write("d")
+      }
+    assertEquals(result, Right((0, ())))
+    assertEquals(logs, Vector("a", "d"))
+  }
+
+  test("Recovery: clear after a recover block also removes the writes made before it") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("a")
+        recover(write("b"))(_ => ())
+        clear
+        write("c")
+      }
+    assertEquals(result, Right((0, ())))
+    assertEquals(logs, Vector("c"))
+  }
+
+  test("Recovery: recover inside an iterator passed to writeAll keeps the writes in evaluation order") {
+    val (logs, result) =
+      Logic.run(0, ()) {
+        write("a")
+        writeAll(Iterator("x", "y").map { s =>
+          recover(write(s"before $s"))(_ => ())
+          recover {
+            write(s"dropped $s")
+            fail("boom")
+          }(_ => ())
+          s
+        })
+        write("b")
+      }
+    assertEquals(result, Right((0, ())))
+    assertEquals(logs, Vector("a", "before x", "x", "before y", "y", "b"))
+  }
+
   // ---------------------------------------------------------------------------
   // Logic.run
   // ---------------------------------------------------------------------------

@@ -64,20 +64,32 @@ object Writer {
     * Provides a `Writer[W]` and runs the body, returning a tuple of the accumulated values and the result.
     */
   def apply[W, A](body: Writer[W] ?=> A): (Vector[W], A) = {
-    val buffer = ArrayBuffer[W]()
-    val writer = new Writer[W] {
-      def write(w: W): Unit                       = buffer.addOne(w)
-      def writeAll(elems: IterableOnce[W]^): Unit = buffer.addAll(elems)
-      def clear: Unit                             = buffer.clear()
+    // Every recover takes a snapshot, so a snapshot must not copy the log. `frozen` is shared with the snapshots, and
+    // `pending` holds the writes made since the last one.
+    var frozen  = Vector.empty[W]
+    val pending = ArrayBuffer[W]()
+    val writer  = new Writer[W] {
+      def write(w: W): Unit                       = pending.addOne(w)
+      def writeAll(elems: IterableOnce[W]^): Unit = pending.addAll(elems)
+      def clear: Unit                             = {
+        frozen = Vector.empty
+        pending.clear()
+      }
       type Snapshot = Vector[W]
-      def snapshot: Vector[W]           = buffer.toVector
+      def snapshot: Vector[W]           = {
+        if (pending.nonEmpty) {
+          frozen = frozen.appendedAll(pending)
+          pending.clear()
+        }
+        frozen
+      }
       def rollback(to: Vector[W]): Unit = {
-        buffer.clear()
-        buffer.addAll(to)
+        frozen = to
+        pending.clear()
       }
     }
-    val result = body(using writer)
-    (buffer.toVector, result)
+    val result  = body(using writer)
+    (frozen.appendedAll(pending), result)
   }
 
   /**
