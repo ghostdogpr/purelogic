@@ -12,7 +12,7 @@ val munitVersion      = "1.3.6"
 
 scalaVersion := scala3Version
 organization := "com.github.ghostdogpr"
-homepage     := Some(uri("https://github.com/ghostdogpr/purelogic"))
+homepage     := Some(uri("https://ghostdogpr.github.io/purelogic/"))
 licenses     := List(License.Apache2)
 scmInfo      := Some(ScmInfo(uri("https://github.com/ghostdogpr/purelogic/"), "scm:git:git@github.com:ghostdogpr/purelogic.git"))
 developers   := List(Developer("ghostdogpr", "Pierre Ricadat", "ghostdogpr@gmail.com", uri("https://github.com/ghostdogpr")))
