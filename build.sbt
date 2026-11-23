@@ -34,7 +34,7 @@ lazy val root = project
   .aggregate(examples, benchmarks)
 
 lazy val core = (projectMatrix in file("core"))
-  .settings(name := "purelogic")
+  .settings(name := "purelogic", versionScheme := Some("early-semver"))
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -98,6 +98,10 @@ lazy val jvmSettings = Def.settings(
 )
 
 // The JS and Native rows share the same sources, so checking the JVM artifact is enough.
+// 0.4.0 breaks compatibility with earlier versions, so MiMa only compares against stable versions from 0.4.0 on.
 lazy val mimaSettings = Def.settings(
-  mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet
+  mimaPreviousArtifacts := previousStableVersion.value
+    .filter(VersionNumber(_).matchesSemVer(SemanticSelector(">=0.4.0")))
+    .map(organization.value %% moduleName.value % _)
+    .toSet
 )

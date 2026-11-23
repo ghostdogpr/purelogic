@@ -18,11 +18,18 @@ trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
   protected given writer: Writer[Ev]
 
   /**
-    * Applies the transition for the given event to update the state, then records the event. If the transition fails via
-    * [[Abort]], the event is not recorded.
+    * Applies the transition for the given event to update the state, then records the event. If the transition fails,
+    * via [[Abort]] or by throwing, the state is restored to what it was before the transition and the event is not
+    * recorded.
     */
   def writeEvent[Ev1 <: Ev](event: Ev1)(using transition: Transition[Ev1, S, Err], abort: Abort[Err]): Unit = {
-    transition.run(event)
+    val before = state.get
+    try transition.run(event)
+    catch {
+      case e: Throwable =>
+        state.set(before)
+        throw e
+    }
     write(event)
   }
 
@@ -32,6 +39,8 @@ trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
     */
   def replayEvents(events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
     events.foreach(transition.run)
+
+  private[purelogic] def rollback[W, S1](w: Writer[W], s: State[S1]): Rollback = Rollback.eventSourced(writer, state, w, s)
 }
 
 object EventSourcing {
@@ -67,8 +76,9 @@ object EventSourcing {
   }
 
   /**
-    * Applies the transition for the given event to update the state, then records the event. If the transition fails via
-    * [[Abort]], the event is not recorded.
+    * Applies the transition for the given event to update the state, then records the event. If the transition fails,
+    * via [[Abort]] or by throwing, the state is restored to what it was before the transition and the event is not
+    * recorded.
     */
   inline def writeEvent[Ev1 <: Ev, Ev, S, Err](event: Ev1)(using transition: Transition[Ev1, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],

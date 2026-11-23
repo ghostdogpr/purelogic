@@ -109,78 +109,58 @@ object Abort {
 
   /**
     * Catches all errors and handles them with a function. Rolls back state and writes to the point before the failed
-    * block.
+    * block. In an event-sourced program, rolls back the state and the events.
     */
-  def recover[W, S, E, A](f: Abort[E] ?=> A)(handler: E => A)(using Writer[W], State[S]): A =
-    doRecover(resetLog = true)(f)(handler)
+  def recover[E, A](f: Abort[E] ?=> A)(handler: E => A)(using Rollback): A =
+    doRecover(keepLog = false)(f)(handler)
 
   /**
-    * Like `recover`, but keeps the writes from the failed block instead of rolling them back.
+    * Like `recover`, but keeps the writes from the failed block instead of rolling them back. In an event-sourced
+    * program, keeps the events from the failed block and the state they produced.
     */
-  def recoverKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: E => A)(using Writer[W], State[S]): A =
-    doRecover(resetLog = false)(f)(handler)
+  def recoverKeepLog[E, A](f: Abort[E] ?=> A)(handler: E => A)(using Rollback): A =
+    doRecover(keepLog = true)(f)(handler)
 
   /**
     * Catches only errors matched by a partial function. When an error is matched, rolls back state and writes to the
     * point before the failed block. The handler, including any pattern guards, is evaluated once, on the restored state
     * and writes. Unmatched errors are re-raised without rollback, leaving state and writes intact for the outer scope to
-    * observe or handle.
+    * observe or handle. In an event-sourced program, the events are rolled back together with the state.
     */
-  def recoverSome[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
-    doRecoverSome(resetLog = true)(f)(handler)
+  def recoverSome[E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Rollback, Abort[E]): A =
+    doRecoverSome(keepLog = false)(f)(handler)
 
   /**
     * Like `recoverSome`, but keeps the writes from the matched block instead of rolling them back. Unmatched errors are
-    * re-raised without rollback (same as `recoverSome`).
+    * re-raised without rollback (same as `recoverSome`). In an event-sourced program, keeps the events from the matched
+    * block and the state they produced.
     */
-  def recoverSomeKeepLog[W, S, E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Writer[W], State[S], Abort[E]): A =
-    doRecoverSome(resetLog = false)(f)(handler)
+  def recoverSomeKeepLog[E, A](f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using Rollback, Abort[E]): A =
+    doRecoverSome(keepLog = true)(f)(handler)
 
-  private def doRecover[W, S, E, A](resetLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using w: Writer[W], s: State[S]): A = {
-    val stateSnapshot = s.get
-    val logSnapshot   = w.snapshot
-
-    val result = boundary[Either[E, A]] {
-      val abort = new Abort[E] {
-        def fail(e: E): Nothing = break(Left(e))
-      }
-      Right(f(using abort))
-    }
-
-    result match {
+  private def doRecover[E, A](keepLog: Boolean)(f: Abort[E] ?=> A)(handler: E => A)(using rollback: Rollback): A = {
+    val restore = rollback.checkpoint
+    Abort(f) match {
       case Right(value) => value
       case Left(e)      =>
-        s.set(stateSnapshot)
-        if (resetLog) w.rollback(logSnapshot)
+        restore(keepLog)
         handler(e)
     }
   }
 
-  private def doRecoverSome[W, S, E, A](
-    resetLog: Boolean
-  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using w: Writer[W], s: State[S], abort: Abort[E]): A = {
-    val stateSnapshot = s.get
-    val logSnapshot   = w.snapshot
-
-    val result = boundary[Either[E, A]] {
-      val a = new Abort[E] {
-        def fail(e: E): Nothing = break(Left(e))
-      }
-      Right(f(using a))
-    }
-
-    result match {
+  private def doRecoverSome[E, A](
+    keepLog: Boolean
+  )(f: Abort[E] ?=> A)(handler: PartialFunction[E, A]^)(using rollback: Rollback, abort: Abort[E]): A = {
+    val restore = rollback.checkpoint
+    Abort(f) match {
       case Right(value) => value
       case Left(e)      =>
-        val failedState = s.get
-        val failedLog   = w.snapshot
-        s.set(stateSnapshot)
-        if (resetLog) w.rollback(logSnapshot)
+        val restoreFailed = rollback.checkpoint
+        restore(keepLog)
         handler.applyOrElse(
           e,
           (unmatched: E) => {
-            s.set(failedState)
-            w.rollback(failedLog)
+            restoreFailed(false)
             abort.fail(unmatched)
           }
         )

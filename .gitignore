@@ -24,6 +24,7 @@ project/project/metals.sbt
 docs/.vitepress/cache
 .claude/settings.local.json
 .claude/worktrees
+.worktrees/
 .vscode
 .claude
 .mcp.json
