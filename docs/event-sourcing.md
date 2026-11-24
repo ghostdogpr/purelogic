@@ -67,6 +67,8 @@ def loadAndProcess(savedEvents: Vector[AccountEvent]): Program[Unit] = {
 }
 ```
 
+If a transition fails, the replay stops and the changes that transition made to the state are undone.
+
 ## Recovering from errors
 
 The [recovery functions](abort.md#recovery) of `Abort` work in event-sourced programs. When `recover` handles an error, it rolls back the events written by the block and the state changes they made. `recoverSome` does the same when its handler matches the error, and re-raises an unmatched error with the state and events as they were at the failure. `recoverKeepLog` and `recoverSomeKeepLog` keep both the events written by the block and the state those events produced:

@@ -1368,6 +1368,25 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, Right((Vector(Withdrawn(20)), Account(30), ())))
   }
 
+  test("EventSourcing: replayEvents restores the state when a transition fails") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          update(a => a.copy(balance = a.balance - amount))
+          ensure(get[Account].balance >= 0, "insufficient funds")
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recoverKeepLog(replayEvents(Vector(Withdrawn(20), Withdrawn(80))))(_ => ())
+    }
+    assertEquals(result, Right((Vector(), Account(30), ())))
+  }
+
   test("EventSourcing: clear does not compile in an event-sourced program") {
     val errors = compileErrors("""
       Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
