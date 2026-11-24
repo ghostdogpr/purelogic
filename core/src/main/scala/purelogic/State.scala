@@ -114,14 +114,6 @@ object State {
   }
 
   /**
-    * Default `State[Unit]` instance that does nothing.
-    */
-  given [S <: Unit]: State[S] = new State[S] {
-    def get: S          = ().asInstanceOf[S]
-    def set(s: S): Unit = ()
-  }
-
-  /**
     * Returns the current state.
     */
   inline def get[S](using s: StateReader[S]): S = s.get

@@ -18,20 +18,34 @@ trait EventSourcing[Ev, S, Err] extends scala.caps.ExclusiveCapability {
   protected given writer: Writer[Ev]
 
   /**
-    * Applies the transition for the given event to update the state, then records the event. If the transition fails via
-    * [[Abort]], the event is not recorded.
+    * Applies the transition for the given event to update the state, then records the event. If the transition fails,
+    * via [[Abort]] or by throwing, the state is restored to what it was before the transition and the event is not
+    * recorded.
     */
   def writeEvent[Ev1 <: Ev](event: Ev1)(using transition: Transition[Ev1, S, Err], abort: Abort[Err]): Unit = {
-    transition.run(event)
+    applyTransition(event)
     write(event)
   }
 
   /**
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
-    * writer, making this suitable for rehydrating state from a persisted event log.
+    * writer, making this suitable for rehydrating state from a persisted event log. If a transition fails, via
+    * [[Abort]] or by throwing, the replay stops and the state is restored to what it was before that transition.
     */
   def replayEvents(events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err], abort: Abort[Err]): Unit =
-    events.foreach(transition.run)
+    events.foreach(applyTransition(_))
+
+  private def applyTransition[Ev1 <: Ev](event: Ev1)(using transition: Transition[Ev1, S, Err], abort: Abort[Err]): Unit = {
+    val before = state.get
+    try transition.run(event)
+    catch {
+      case e: Throwable =>
+        state.set(before)
+        throw e
+    }
+  }
+
+  private[purelogic] def rollback[W, S1](w: Writer[W], s: State[S1]): Rollback = Rollback.eventSourced(writer, state, w, s)
 }
 
 object EventSourcing {
@@ -67,8 +81,9 @@ object EventSourcing {
   }
 
   /**
-    * Applies the transition for the given event to update the state, then records the event. If the transition fails via
-    * [[Abort]], the event is not recorded.
+    * Applies the transition for the given event to update the state, then records the event. If the transition fails,
+    * via [[Abort]] or by throwing, the state is restored to what it was before the transition and the event is not
+    * recorded.
     */
   inline def writeEvent[Ev1 <: Ev, Ev, S, Err](event: Ev1)(using transition: Transition[Ev1, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],
@@ -78,7 +93,8 @@ object EventSourcing {
 
   /**
     * Replays a sequence of events by applying their transitions to rebuild the state. Events are not recorded in the
-    * writer, making this suitable for rehydrating state from a persisted event log.
+    * writer, making this suitable for rehydrating state from a persisted event log. If a transition fails, via
+    * [[Abort]] or by throwing, the replay stops and the state is restored to what it was before that transition.
     */
   inline def replayEvents[Ev, S, Err](events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],

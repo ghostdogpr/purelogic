@@ -44,13 +44,6 @@ object Reader {
   }
 
   /**
-    * Default `Reader[Unit]` instance that always returns `()`.
-    */
-  given [R <: Unit]: Reader[R] = new Reader[R] {
-    def read: R = ().asInstanceOf[R]
-  }
-
-  /**
     * Returns the current reader value.
     */
   inline def read[R](using r: Reader[R]): R = r.read

@@ -38,7 +38,7 @@ For reliable replay, base each transition on the event and current state. Read c
 
 ## Writing events
 
-`writeEvent` applies the transition to update the state, then records the event. If the transition fails via `Abort`, the event is **not** recorded:
+`writeEvent` applies the transition to update the state, then records the event. If the transition fails, the event is **not** recorded, and any change the transition made to the state is undone:
 
 ```scala
 type Program[A] = EventSourcingLogic[Config, AccountEvent, Account, String, A]
@@ -66,6 +66,22 @@ def loadAndProcess(savedEvents: Vector[AccountEvent]): Program[Unit] = {
   deposit(100)
 }
 ```
+
+If a transition fails, the replay stops and the changes that transition made to the state are undone.
+
+## Recovering from errors
+
+The [recovery functions](abort.md#recovery) of `Abort` work in event-sourced programs. When `recover` handles an error, it rolls back the events written by the block and the state changes they made. `recoverSome` does the same when its handler matches the error, and re-raises an unmatched error with the state and events as they were at the failure. `recoverKeepLog` and `recoverSomeKeepLog` keep both the events written by the block and the state those events produced:
+
+```scala
+def tryWithdraw(amount: Int): Program[Boolean] =
+  recover {
+    withdraw(amount)
+    true
+  }(_ => false)
+```
+
+Recovery also rolls back any `Writer` or `State` in scope as described in [recovery](abort.md#recovery), such as those of a `Logic` program run inside the event-sourced program.
 
 ## The `EventSourcingLogic` type alias
 

@@ -212,6 +212,45 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, (Vector("a", "b"), 42))
   }
 
+  test("Writer: capture forwards the writes of a failing block, which recoverKeepLog keeps and recover rolls back") {
+    val kept = Logic.run[Unit, String, Int, String, String](0, ()) {
+      recoverKeepLog {
+        write("before")
+        val _ = capture {
+          write("inside")
+          fail("boom")
+        }
+        "completed"
+      }(e => s"recovered $e")
+    }
+    assertEquals(kept, (Vector("before", "inside"), Right((0, "recovered boom"))))
+
+    val rolledBack = Logic.run[Unit, String, Int, String, String](0, ()) {
+      write("outer")
+      recover {
+        val _ = capture {
+          write("inside")
+          fail("boom")
+        }
+        "completed"
+      }(e => s"recovered $e")
+    }
+    assertEquals(rolledBack, (Vector("outer"), Right((0, "recovered boom"))))
+
+    val thrown = Writer[String, String] {
+      try {
+        val _ = capture {
+          write("inside")
+          throw new RuntimeException("boom")
+        }
+        "completed"
+      } catch {
+        case e: RuntimeException => e.getMessage
+      }
+    }
+    assertEquals(thrown, (Vector("inside"), "boom"))
+  }
+
   // ---------------------------------------------------------------------------
   // Abort
   // ---------------------------------------------------------------------------
@@ -398,13 +437,92 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before"))
   }
 
-  test("Recovery: recover can be used without State or Writer") {
+  test("Recovery: recover works without State or Writer in scope") {
     val result = Abort {
       recover {
         fail("boom")
       }(_ => "recovered")
     }
     assertEquals(result, Right("recovered"))
+  }
+
+  test("Recovery: recover in a helper with a State and a StateWriter of another type rolls back the State") {
+    val other: StateWriter[String]                          = new StateWriter[String] {
+      def set(s: String): Unit = ()
+    }
+    def helper(using State[Int], StateWriter[String]): Unit =
+      recover {
+        set(9)
+        set("other")
+        fail("oops")
+      }(_ => ())
+    val (_, result)                                         =
+      Logic.run(0, ()) {
+        set(1)
+        helper(using summon[State[Int]], other)
+      }
+    assertEquals(result, Right((1, ())))
+  }
+
+  test("Recovery: recover does not compile with two States") {
+    val errors = compileErrors("""
+      def helper(using State[Int], State[String]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("match type purelogic.State"), errors)
+  }
+
+  test("Recovery: recover with nested Writers of different types restores the State and the innermost Writer") {
+    val (outer, (inner, (state, _))) =
+      Writer[String, (Vector[Int], (Int, Unit))] {
+        Writer[Int, (Int, Unit)] {
+          State(0) {
+            write("outer before")
+            write(1)
+            recover {
+              write("outer inside")
+              write(2)
+              set(5)
+              fail("oops")
+            }(_ => ())
+          }
+        }
+      }
+    assertEquals(outer, Vector("outer before", "outer inside"))
+    assertEquals(inner, Vector(1))
+    assertEquals(state, 0)
+  }
+
+  test("Recovery: recover does not compile with two Writers of different types at the same level") {
+    val errors = compileErrors("""
+      def helper(using Writer[String], Writer[Int], State[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("match type purelogic.Writer"), errors)
+  }
+
+  test("Recovery: recover does not compile with only a StateWriter") {
+    val errors = compileErrors("""
+      def helper(using StateWriter[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("a StateWriter alone cannot be saved"), errors)
+  }
+
+  test("Recovery: recover does not compile with a Writer and only a StateWriter") {
+    val errors = compileErrors("""
+      def helper(using Writer[String], StateWriter[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("a StateWriter alone cannot be saved"), errors)
   }
 
   test("Recovery: recover's state restore wins over a nested State.local finally") {
@@ -470,7 +588,7 @@ class PureLogicSpec extends munit.FunSuite {
   test("Recovery: recoverSome guards are evaluated once, on the restored state") {
     val (logs, result) =
       Logic.run(0, ()) {
-        recoverSome[String, Int, String, Int] {
+        recoverSome[String, Int] {
           try fail("boom")
           finally set(1)
         } {
@@ -485,7 +603,7 @@ class PureLogicSpec extends munit.FunSuite {
     val (logs, result) =
       Logic.run(0, ()) {
         val inner = Abort[String, Int] {
-          recoverSome[String, Int, String, Int] {
+          recoverSome[String, Int] {
             set(5)
             write("inside")
             fail("boom")
@@ -503,7 +621,7 @@ class PureLogicSpec extends munit.FunSuite {
     val (logs, result) =
       Logic.run(0, ()) {
         val inner = Abort[String, Int] {
-          recoverSomeKeepLog[String, Int, String, Int] {
+          recoverSomeKeepLog[String, Int] {
             set(5)
             write("body")
             fail("boom")
@@ -947,5 +1065,406 @@ class PureLogicSpec extends munit.FunSuite {
     }
     assertEquals(finalState, Items(List("b")))
     assertEquals(events, Vector(Created("a"), Created("b"), Deleted("a")))
+  }
+
+  test("EventSourcing: recover rolls back state and events") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recover {
+        writeEvent(Withdrawn(30))
+        writeEvent(Withdrawn(30))
+      }(_ => ())
+    }
+    assertEquals(result, Right((Vector(), Account(50), ())))
+  }
+
+  test("EventSourcing: recoverKeepLog keeps the events and the state they produced") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recoverKeepLog {
+        writeEvent(Withdrawn(30))
+        writeEvent(Withdrawn(30))
+      }(_ => ())
+    }
+    assertEquals(result, Right((Vector(Withdrawn(30)), Account(20), ())))
+  }
+
+  test("EventSourcing: recoverSome re-raises unmatched errors with state and events as they were at the failure") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      val inner = Abort[String, Unit] {
+        recoverSome {
+          writeEvent(Withdrawn(30))
+          writeEvent(Withdrawn(30))
+        } { case "other" => () }
+      }
+      (inner, get)
+    }
+    assertEquals(result, Right((Vector(Withdrawn(30)), Account(20), (Left("insufficient funds"), Account(20)))))
+  }
+
+  test("EventSourcing: recover rolls back a transition that updates the state and then fails") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          update(a => a.copy(balance = a.balance - amount))
+          ensure(get[Account].balance >= 0, "insufficient funds")
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      writeEvent(Withdrawn(20))
+      recover(writeEvent(Withdrawn(80)))(_ => ())
+    }
+    assertEquals(result, Right((Vector(Withdrawn(20)), Account(30), ())))
+  }
+
+  test("EventSourcing: recoverSome runs the handler on the restored state and rolls back the events") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recoverSome {
+        writeEvent(Withdrawn(30))
+        writeEvent(Withdrawn(30))
+        0
+      } { case "insufficient funds" if get[Account].balance == 50 => get[Account].balance }
+    }
+    assertEquals(result, Right((Vector(), Account(50), 50)))
+  }
+
+  test("EventSourcing: the KeepLog variants keep the state of the recorded events when a transition updates and then fails") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          update(a => a.copy(balance = a.balance - amount))
+          ensure(get[Account].balance >= 0, "insufficient funds")
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recoverKeepLog {
+        writeEvent(Withdrawn(20))
+        writeEvent(Withdrawn(80))
+      }(_ => ())
+      recoverSomeKeepLog {
+        writeEvent(Withdrawn(10))
+        writeEvent(Withdrawn(80))
+        0
+      } { case "insufficient funds" => get[Account].balance }
+    }
+    assertEquals(result, Right((Vector(Withdrawn(20), Withdrawn(10)), Account(20), 20)))
+  }
+
+  test("EventSourcing: recoverKeepLog after EventSourcing.apply inside Logic.run keeps the state of the kept events") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val (events, result) = Logic.run(Account(50), ()) {
+      EventSourcing[AccountEvent, Account, String, Unit] {
+        recoverKeepLog {
+          writeEvent(Withdrawn(30))
+          writeEvent(Withdrawn(30))
+        }(_ => ())
+      }
+    }
+    assertEquals(events, Vector(Withdrawn(30)))
+    assertEquals(result, Right((Account(20), ())))
+  }
+
+  test("Recovery: recover inside capture rolls back the writes made to the captured writer") {
+    val (logs, result) = Logic.run[Unit, String, Int, String, Vector[String]](0, ()) {
+      val (inner, _) = capture {
+        write("before")
+        recover {
+          write("inside")
+          fail("boom")
+        }(_ => ())
+      }
+      inner
+    }
+    assertEquals(result, Right((0, Vector("before"))))
+    assertEquals(logs, Vector("before"))
+  }
+
+  test("Recovery: recover inside a nested Writer rolls back the nested writer") {
+    val (_, result) = Logic.run[Unit, String, Int, String, Vector[String]](0, ()) {
+      val (inner, _) = Writer[String, Unit] {
+        recover {
+          write("inside")
+          fail("boom")
+        }(_ => ())
+      }
+      inner
+    }
+    assertEquals(result, Right((0, Vector())))
+  }
+
+  test("Recovery: recover inside a nested State rolls back the nested state") {
+    val (_, result) = Logic.run[Unit, String, Int, String, (Long, Unit)](0, ()) {
+      State(1L) {
+        recover {
+          set(9L)
+          fail("boom")
+        }(_ => ())
+      }
+    }
+    assertEquals(result, Right((0, (1L, ()))))
+  }
+
+  test("EventSourcing: recover inside a Logic program run from an event-sourced program rolls back its state and writes") {
+    val result = Logic.runEventSourcing[Unit, Int, Int, String, (Vector[String], Either[String, (Long, Long)])](5, ()) {
+      Logic.run(0L, ()) {
+        recover {
+          set(9L)
+          write("inside")
+          fail("boom")
+        }(_ => get[Long])
+      }
+    }
+    assertEquals(result, Right((Vector(), 5, (Vector(), Right((0L, 0L))))))
+  }
+
+  test("EventSourcing: recover inside Logic.simulate called from an event-sourced program rolls back its state and writes") {
+    case class Account(balance: Int)
+
+    val result = Logic.runEventSourcing[Unit, Int, Account, String, (Account, Boolean)](Account(50), ()) {
+      Logic.simulate[String, Account, Unit, String, (Account, Boolean)] {
+        val before = snapshot
+        recover {
+          set(Account(0))
+          write("inside")
+          fail("boom")
+        }(_ => ())
+        (get, snapshot == before)
+      }
+    }
+    assertEquals(result, Right((Vector(), Account(50), (Account(50), true))))
+  }
+
+  test("EventSourcing: recover rolls back a Writer in scope next to the EventSourcing") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val (audit, result) = Writer[String, Either[String, (Vector[AccountEvent], Account, Unit)]] {
+      Logic.runEventSourcing(Account(50), ()) {
+        recover {
+          write("audit: trying")
+          writeEvent(Withdrawn(30))
+          writeEvent(Withdrawn(30))
+        }(_ => ())
+      }
+    }
+    assertEquals(audit, Vector())
+    assertEquals(result, Right((Vector(), Account(50), ())))
+  }
+
+  test("EventSourcing: the KeepLog variants keep the state of the kept events when a focused State aliases it") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val (events, result) = Logic.run[Unit, AccountEvent, Account, String, Int](Account(50), ()) {
+      EventSourcing[AccountEvent, Account, String, Int] {
+        focusState[Account, Int, Int](_.balance)((a, b) => a.copy(balance = b)) {
+          recoverKeepLog {
+            writeEvent(Withdrawn(10))
+            writeEvent(Withdrawn(80))
+          }(_ => ())
+          recoverSomeKeepLog {
+            writeEvent(Withdrawn(10))
+            writeEvent(Withdrawn(80))
+            0
+          } { case "insufficient funds" => get[Int] }
+        }
+      }
+    }
+    assertEquals(events, Vector(Withdrawn(10), Withdrawn(10)))
+    assertEquals(result, Right((Account(30), 30)))
+  }
+
+  test("EventSourcing: recoverKeepLog restores a separate State in scope and keeps the writes, events and their state") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          ensure(get[Account].balance >= amount, "insufficient funds")
+          update(a => a.copy(balance = a.balance - amount))
+      }
+    }
+
+    val (logs, result) = Logic.run[Unit, String, Int, String, Either[String, (Vector[AccountEvent], Account, Unit)]](0, ()) {
+      Logic.runEventSourcing(Account(50), ()) {
+        recoverKeepLog {
+          set(7)
+          write("inside")
+          writeEvent(Withdrawn(30))
+          writeEvent(Withdrawn(30))
+        }(_ => ())
+      }
+    }
+    assertEquals(logs, Vector("inside"))
+    assertEquals(result, Right((0, Right((Vector(Withdrawn(30)), Account(20), ())))))
+  }
+
+  test("EventSourcing: writeEvent restores the state when the transition throws") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          update(a => a.copy(balance = a.balance - amount))
+          if (get[Account].balance < 0) throw new IllegalStateException("negative balance")
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      writeEvent(Withdrawn(20))
+      try writeEvent(Withdrawn(80))
+      catch { case _: IllegalStateException => () }
+    }
+    assertEquals(result, Right((Vector(Withdrawn(20)), Account(30), ())))
+  }
+
+  test("EventSourcing: replayEvents restores the state when a transition fails") {
+    case class Account(balance: Int)
+    enum AccountEvent { case Withdrawn(amount: Int) }
+    import AccountEvent.*
+
+    given Transition[AccountEvent, Account, String] with {
+      def run(ev: AccountEvent) = ev match {
+        case Withdrawn(amount) =>
+          update(a => a.copy(balance = a.balance - amount))
+          ensure(get[Account].balance >= 0, "insufficient funds")
+      }
+    }
+
+    val result = Logic.runEventSourcing(Account(50), ()) {
+      recoverKeepLog(replayEvents(Vector(Withdrawn(20), Withdrawn(80))))(_ => ())
+    }
+    assertEquals(result, Right((Vector(), Account(30), ())))
+  }
+
+  test("EventSourcing: clear does not compile in an event-sourced program") {
+    val errors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        clear
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Writer"), errors)
+  }
+
+  test("EventSourcing: capture does not compile in an event-sourced program") {
+    val errors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        capture(())
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Writer"), errors)
+  }
+
+  test("EventSourcing: snapshot and rollback do not compile in an event-sourced program") {
+    val snapshotErrors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        snapshot[Nothing]
+      }
+    """)
+    assert(snapshotErrors.contains("parameter writer of method snapshot"), snapshotErrors)
+    val rollbackErrors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        rollback[Nothing](???)
+      }
+    """)
+    assert(rollbackErrors.contains("parameter writer of method rollback"), rollbackErrors)
+  }
+
+  test("Reader: read does not compile without a Reader") {
+    val errors = compileErrors("""
+      Abort[String, Unit] {
+        read[Unit]
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Reader"), errors)
   }
 }

@@ -66,6 +66,8 @@ def process(using Writer[String]): Unit = {
 }
 ```
 
+The writes are forwarded even when the block aborts or throws. When an enclosing [`recover`](abort.md#recovery) handles the failure, it rolls them back, and `recoverKeepLog` keeps them.
+
 ### `snapshot` / `rollback`
 
 `snapshot` captures the current contents of the log, and `rollback` restores it to a captured snapshot, discarding any writes made since. Values accumulated **before** the snapshot are preserved, so this is a targeted reset rather than a full `clear`.
@@ -83,7 +85,7 @@ def process(using Writer[String]): Unit = {
 These are the low-level primitives that [`recover`](abort.md) builds on. Reach for them directly when you need custom recovery semantics that the built-in `recover` family does not cover. A common example is a lookahead that should leave no trace on success but keep its writes when a committed failure escapes:
 
 ```scala
-def isSuccessful(block: Abort[String] ?=> Unit)(using Writer[String], State[Unit], Abort[String]): Boolean = {
+def isSuccessful(block: Abort[String] ?=> Unit)(using Writer[String], Abort[String]): Boolean = {
   val snap   = snapshot
   val result = recoverSome {
     block
