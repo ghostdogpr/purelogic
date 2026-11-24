@@ -212,6 +212,45 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(result, (Vector("a", "b"), 42))
   }
 
+  test("Writer: capture forwards the writes of a failing block, which recoverKeepLog keeps and recover rolls back") {
+    val kept = Logic.run[Unit, String, Int, String, String](0, ()) {
+      recoverKeepLog {
+        write("before")
+        val _ = capture {
+          write("inside")
+          fail("boom")
+        }
+        "completed"
+      }(e => s"recovered $e")
+    }
+    assertEquals(kept, (Vector("before", "inside"), Right((0, "recovered boom"))))
+
+    val rolledBack = Logic.run[Unit, String, Int, String, String](0, ()) {
+      write("outer")
+      recover {
+        val _ = capture {
+          write("inside")
+          fail("boom")
+        }
+        "completed"
+      }(e => s"recovered $e")
+    }
+    assertEquals(rolledBack, (Vector("outer"), Right((0, "recovered boom"))))
+
+    val thrown = Writer[String, String] {
+      try {
+        val _ = capture {
+          write("inside")
+          throw new RuntimeException("boom")
+        }
+        "completed"
+      } catch {
+        case e: RuntimeException => e.getMessage
+      }
+    }
+    assertEquals(thrown, (Vector("inside"), "boom"))
+  }
+
   // ---------------------------------------------------------------------------
   // Abort
   // ---------------------------------------------------------------------------

@@ -66,6 +66,8 @@ def process(using Writer[String]): Unit = {
 }
 ```
 
+The writes are forwarded even when the block aborts or throws. When an enclosing [`recover`](abort.md#recovery) handles the failure, it rolls them back, and `recoverKeepLog` keeps them.
+
 ### `snapshot` / `rollback`
 
 `snapshot` captures the current contents of the log, and `rollback` restores it to a captured snapshot, discarding any writes made since. Values accumulated **before** the snapshot are preserved, so this is a targeted reset rather than a full `clear`.
