@@ -93,18 +93,6 @@ object Writer {
   }
 
   /**
-    * Default `Writer[Nothing]` instance that discards all writes.
-    */
-  given [W <: Nothing]: Writer[W] = new Writer[W] {
-    def write(w: W): Unit                       = ()
-    def writeAll(elems: IterableOnce[W]^): Unit = ()
-    def clear: Unit                             = ()
-    type Snapshot = Unit
-    def snapshot: Unit           = ()
-    def rollback(to: Unit): Unit = ()
-  }
-
-  /**
     * Appends a single value to the log.
     */
   inline def write[W](w: W)(using writer: Writer[W]): Unit = writer.write(w)

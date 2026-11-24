@@ -84,7 +84,13 @@ val result: Int = Abort.attempt {
 
 Recovery also works in [event-sourced programs](event-sourcing.md#recovering-from-errors), where it rolls back the state and the events together. There, the `KeepLog` variants keep both the events written by the failed block and the state those events produced, so the state always matches the events.
 
-The rollback is done by a `Rollback` capability, which the recovery functions take as a context parameter. You never create or pass it yourself: the library provides it from the `State` and `Writer` in scope, using an instance that does nothing in place of a missing one. In an event-sourced program, it also covers the `EventSourcing` in scope.
+The recovery functions take a `Rollback` as a context parameter. You never create or pass it yourself: the library provides one from the capabilities your code has.
+
+- With a `State` and a `Writer`, recovery restores both the state and the writes.
+- With only one of them, it restores that one.
+- In an event-sourced program, it restores the state and the events together.
+
+A function that has only a `StateWriter` cannot use `recover`, because the state cannot be read to save it. Ask for a `State` instead.
 
 ### `recover`
 

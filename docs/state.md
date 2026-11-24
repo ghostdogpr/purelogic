@@ -25,6 +25,8 @@ def readWrite(using State[Counter]): Int = {
 }
 ```
 
+A function with only a `StateWriter` cannot use [`recover`](abort.md#recovery), because recovery needs to read the state to save and restore it. Require a `State` in such a function.
+
 ::: tip Variance
 `StateReader` is **covariant** (`StateReader[+S]`) and `StateWriter` is **contravariant** (`StateWriter[-S]`), so a `State[Dog]` can be passed where a `StateReader[Animal]` or `StateWriter[Pug]` is expected.
 :::

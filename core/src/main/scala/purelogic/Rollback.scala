@@ -1,14 +1,22 @@
 package purelogic
 
+import scala.annotation.implicitNotFound
+import scala.util.NotGiven
+
 /**
-  * Saves the state and writes of a scope and restores them. `recover` and its variants use it to undo the effects of a
-  * block that failed.
+  * Lets `recover` and its variants undo the changes made by a block that fails.
   *
-  * Programs never create or pass a `Rollback`: the library provides one from the capabilities in scope. It always
-  * covers the [[Writer]] and [[State]] in scope, or their default instances when they are not in scope. In an
-  * event-sourced program, it also covers the [[EventSourcing]] in scope and restores its state and events together, so
-  * the state always matches the events.
+  * You never create or pass a `Rollback` yourself: the library provides one from the capabilities your code has.
+  *   - With a [[State]] and a [[Writer]], recovery restores both the state and the writes.
+  *   - With only one of them, it restores that one.
+  *   - In an event-sourced program, it restores the state and the events together.
+  *
+  * A function that has only a [[StateWriter]] cannot use `recover`, because the state cannot be read to save it. Ask
+  * for a [[State]] instead.
   */
+@implicitNotFound(
+  "recover needs the Writer and State in scope to save and restore them. Each must be unambiguous, and a StateWriter alone cannot be saved, so require a State instead"
+)
 sealed trait Rollback extends scala.caps.ExclusiveCapability {
 
   /**
@@ -21,14 +29,50 @@ sealed trait Rollback extends scala.caps.ExclusiveCapability {
 
 object Rollback extends RollbackLowPriority {
 
+  private[purelogic] opaque type StateInScope[S] <: State[S] = State[S]
+
+  object StateInScope extends StateInScopeLowPriority {
+    given fromState[S](using s: State[S]): StateInScope[S] = s
+  }
+
+  private[purelogic] trait StateInScopeLowPriority {
+
+    // Lower priority than `fromState`: with two capabilities that write a state, the `StateWriter` search is ambiguous
+    // and `NotGiven` succeeds, but a `State` in scope must still be used.
+    given none(using NotGiven[StateWriter[Nothing]]): StateInScope[Unit] = new State[Unit] {
+      def get: Unit          = ()
+      def set(s: Unit): Unit = ()
+    }
+  }
+
+  private[purelogic] opaque type WriterInScope[W] <: Writer[W] = Writer[W]
+
+  object WriterInScope extends WriterInScopeLowPriority {
+    given fromWriter[W](using w: Writer[W]): WriterInScope[W] = w
+  }
+
+  private[purelogic] trait WriterInScopeLowPriority {
+
+    // Lower priority than `fromWriter`, so that a scope with two Writers of different types, where the `Writer` search is
+    // ambiguous and `NotGiven` succeeds, does not get the do-nothing writer.
+    given none(using NotGiven[Writer[Nothing]]): WriterInScope[Nothing] = new Writer[Nothing] {
+      def write(w: Nothing): Unit                       = ()
+      def writeAll(elems: IterableOnce[Nothing]^): Unit = ()
+      def clear: Unit                                   = ()
+      type Snapshot = Unit
+      def snapshot: Unit           = ()
+      def rollback(to: Unit): Unit = ()
+    }
+  }
+
   /**
     * Provides a `Rollback` from the [[EventSourcing]], [[Writer]] and [[State]] in scope, preferred over the one built
     * from [[Writer]] and [[State]] alone.
     */
   given fromEventSourcing[Ev, S, Err, W, S1](
     using eventSourcing: EventSourcing[Ev, S, Err],
-    writer: Writer[W],
-    state: State[S1]
+    writer: WriterInScope[W],
+    state: StateInScope[S1]
   ): Rollback =
     eventSourcing.rollback(writer, state)
 
@@ -74,9 +118,9 @@ object Rollback extends RollbackLowPriority {
 private[purelogic] trait RollbackLowPriority {
 
   /**
-    * Provides a `Rollback` from the [[Writer]] and [[State]] in scope. When either is missing, its default instance,
-    * which does nothing, is used.
+    * Provides a `Rollback` from the [[Writer]] and [[State]] in scope. When either is missing, an instance that does
+    * nothing is used in its place.
     */
-  given fromWriterAndState[W, S](using writer: Writer[W], state: State[S]): Rollback =
+  given fromWriterAndState[W, S](using writer: Rollback.WriterInScope[W], state: Rollback.StateInScope[S]): Rollback =
     Rollback(writer, state)
 }

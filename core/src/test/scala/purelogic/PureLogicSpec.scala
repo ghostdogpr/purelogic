@@ -398,13 +398,92 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector("before"))
   }
 
-  test("Recovery: recover can be used without State or Writer") {
+  test("Recovery: recover works without State or Writer in scope") {
     val result = Abort {
       recover {
         fail("boom")
       }(_ => "recovered")
     }
     assertEquals(result, Right("recovered"))
+  }
+
+  test("Recovery: recover in a helper with a State and a StateWriter of another type rolls back the State") {
+    val other: StateWriter[String]                          = new StateWriter[String] {
+      def set(s: String): Unit = ()
+    }
+    def helper(using State[Int], StateWriter[String]): Unit =
+      recover {
+        set(9)
+        set("other")
+        fail("oops")
+      }(_ => ())
+    val (_, result)                                         =
+      Logic.run(0, ()) {
+        set(1)
+        helper(using summon[State[Int]], other)
+      }
+    assertEquals(result, Right((1, ())))
+  }
+
+  test("Recovery: recover does not compile with two States") {
+    val errors = compileErrors("""
+      def helper(using State[Int], State[String]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("match type purelogic.State"), errors)
+  }
+
+  test("Recovery: recover with nested Writers of different types restores the State and the innermost Writer") {
+    val (outer, (inner, (state, _))) =
+      Writer[String, (Vector[Int], (Int, Unit))] {
+        Writer[Int, (Int, Unit)] {
+          State(0) {
+            write("outer before")
+            write(1)
+            recover {
+              write("outer inside")
+              write(2)
+              set(5)
+              fail("oops")
+            }(_ => ())
+          }
+        }
+      }
+    assertEquals(outer, Vector("outer before", "outer inside"))
+    assertEquals(inner, Vector(1))
+    assertEquals(state, 0)
+  }
+
+  test("Recovery: recover does not compile with two Writers of different types at the same level") {
+    val errors = compileErrors("""
+      def helper(using Writer[String], Writer[Int], State[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("match type purelogic.Writer"), errors)
+  }
+
+  test("Recovery: recover does not compile with only a StateWriter") {
+    val errors = compileErrors("""
+      def helper(using StateWriter[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("a StateWriter alone cannot be saved"), errors)
+  }
+
+  test("Recovery: recover does not compile with a Writer and only a StateWriter") {
+    val errors = compileErrors("""
+      def helper(using Writer[String], StateWriter[Int]): Unit =
+        recover {
+          fail("oops")
+        }(_ => ())
+    """)
+    assert(errors.contains("a StateWriter alone cannot be saved"), errors)
   }
 
   test("Recovery: recover's state restore wins over a nested State.local finally") {
@@ -1287,5 +1366,47 @@ class PureLogicSpec extends munit.FunSuite {
       catch { case _: IllegalStateException => () }
     }
     assertEquals(result, Right((Vector(Withdrawn(20)), Account(30), ())))
+  }
+
+  test("EventSourcing: clear does not compile in an event-sourced program") {
+    val errors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        clear
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Writer"), errors)
+  }
+
+  test("EventSourcing: capture does not compile in an event-sourced program") {
+    val errors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        capture(())
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Writer"), errors)
+  }
+
+  test("EventSourcing: snapshot and rollback do not compile in an event-sourced program") {
+    val snapshotErrors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        snapshot[Nothing]
+      }
+    """)
+    assert(snapshotErrors.contains("parameter writer of method snapshot"), snapshotErrors)
+    val rollbackErrors = compileErrors("""
+      Logic.runEventSourcing[Unit, String, Int, String, Unit](0, ()) {
+        rollback[Nothing](???)
+      }
+    """)
+    assert(rollbackErrors.contains("parameter writer of method rollback"), rollbackErrors)
+  }
+
+  test("Reader: read does not compile without a Reader") {
+    val errors = compileErrors("""
+      Abort[String, Unit] {
+        read[Unit]
+      }
+    """)
+    assert(errors.contains("No given instance of type purelogic.Reader"), errors)
   }
 }
