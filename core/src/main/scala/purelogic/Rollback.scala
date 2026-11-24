@@ -1,6 +1,5 @@
 package purelogic
 
-import scala.annotation.implicitNotFound
 import scala.util.NotGiven
 
 /**
@@ -14,7 +13,7 @@ import scala.util.NotGiven
   * A function that has only a [[StateWriter]] cannot use `recover`, because the state cannot be read to save it. Ask
   * for a [[State]] instead.
   */
-@implicitNotFound(
+@scala.annotation.implicitNotFound(
   "recover needs the Writer and State in scope to save and restore them. Each must be unambiguous, and a StateWriter alone cannot be saved, so require a State instead"
 )
 sealed trait Rollback extends scala.caps.ExclusiveCapability {
