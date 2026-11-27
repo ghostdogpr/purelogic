@@ -101,7 +101,7 @@ object Writer {
   /**
     * Appends multiple values to the log at once.
     */
-  inline def writeAll[W](inline elems: IterableOnce[W]^)(using writer: Writer[W]): Unit = writer.writeAll(elems)
+  def writeAll[W](elems: IterableOnce[W]^)(using writer: Writer[W]): Unit = writer.writeAll(elems)
 
   /**
     * Clears all accumulated values.

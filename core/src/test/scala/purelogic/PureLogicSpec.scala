@@ -337,7 +337,7 @@ class PureLogicSpec extends munit.FunSuite {
     val ex                = new InterruptedException("interrupt")
     var caught: Throwable = null
     try Abort[Throwable, Int](attempt(throw ex))
-    catch { case t: Throwable => caught = t }
+    catch { case e: InterruptedException => caught = e }
     assert(caught eq ex)
   }
 
