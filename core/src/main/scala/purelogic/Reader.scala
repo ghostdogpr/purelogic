@@ -51,15 +51,15 @@ object Reader {
   /**
     * Applies a projection function to the reader value and returns the result.
     */
-  inline def read[R, A](using r: Reader[R])(f: R => A): A = r.read(f)
+  inline def read[R, A](using r: Reader[R])(inline f: R => A): A = r.read(f)
 
   /**
     * Runs a block with a modified reader value. The original value is restored after the block completes.
     */
-  inline def local[R, A](using r: Reader[R])(f: R => R)(body: Reader[R] ?=> A): A = r.local(f)(body)
+  inline def local[R, A](using r: Reader[R])(inline f: R => R)(inline body: Reader[R] ?=> A): A = r.local(f)(body)
 
   /**
     * Runs a block with a narrowed reader derived by applying `f` to the current value.
     */
-  inline def focus[R, A, B](using r: Reader[R])(f: R => A)(body: Reader[A] ?=> B): B = r.focus(f)(body)
+  inline def focus[R, A, B](using r: Reader[R])(inline f: R => A)(inline body: Reader[A] ?=> B): B = r.focus(f)(body)
 }

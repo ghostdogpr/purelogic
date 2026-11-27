@@ -8,7 +8,7 @@ purelogic is a library for writing pure, direct-style business logic with the `R
 
 - The library is the `core` module. It is compiled for the JVM, Scala.js and Scala Native from the same sources, so it cannot use JVM-only APIs. The JVM project is `core`, and the other platforms are `coreJS` and `coreNative`.
 - The library is compiled with the experimental capture checker (`-language:experimental.captureChecking`), so new code must pass capture checking. Capture checking syntax and diagnostics can change between Scala versions. The `benchmarks` module turns it off.
-- Tests use munit. `test` runs the tests on all three platforms. The Scala.js tests need Node.js, and the Scala Native tests need Clang and are slow to link, so run `core/test` while you iterate.
+- Tests use munit. `test` runs the tests on all three platforms. The Scala.js tests need Node.js, and the Scala Native tests need Clang and are slow to link, so run `core/test` while you iterate. `scalaNext/test` runs the JVM tests compiled with a newer Scala release (`scala3NextVersion` in `build.sbt`) against the library, because capture checking changes between releases.
 - CI runs `check`, `test` and `mima`.
 
 ## Consistency
