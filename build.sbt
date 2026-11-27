@@ -1,5 +1,6 @@
-val scala3Version = "3.9.0"
-val scalaVersions = Seq(scala3Version)
+val scala3Version     = "3.9.0"
+val scala3NextVersion = "3.10.1"
+val scalaVersions     = Seq(scala3Version)
 
 // dependencies for tests and benchmarks
 val catsVersion       = "2.13.0"
@@ -31,7 +32,7 @@ lazy val root = project
   .in(file("."))
   .settings(publish / skip := true)
   .aggregate(core.projectRefs *)
-  .aggregate(examples, benchmarks)
+  .aggregate(examples, benchmarks, scalaNext)
 
 lazy val core = (projectMatrix in file("core"))
   .settings(name := "purelogic", versionScheme := Some("early-semver"))
@@ -46,6 +47,21 @@ lazy val core = (projectMatrix in file("core"))
   .nativePlatform(scalaVersions, Seq(Test / fork := false, bspEnabled := false))
 
 lazy val coreJVM = core.jvm(scala3Version)
+
+// Capture checking changes between Scala releases, and programs can use a newer release than the one the library is
+// built with. This project compiles and runs the JVM tests with `scala3NextVersion` against the library built with
+// `scala3Version`.
+lazy val scalaNext = project
+  .in(file("scala-next"))
+  .settings(name := "purelogic-scala-next")
+  .settings(commonSettings, jvmSettings)
+  .settings(publish / skip := true)
+  .settings(
+    scalaVersion                           := scala3NextVersion,
+    Test / unmanagedSourceDirectories      := (coreJVM / Test / unmanagedSourceDirectories).value,
+    libraryDependencies += "org.scalameta" %% "munit" % munitVersion % Test
+  )
+  .dependsOn(coreJVM)
 
 lazy val examples = project
   .in(file("examples"))
