@@ -96,7 +96,7 @@ object EventSourcing {
     * writer, making this suitable for rehydrating state from a persisted event log. If a transition fails, via
     * [[Abort]] or by throwing, the replay stops and the state is restored to what it was before that transition.
     */
-  inline def replayEvents[Ev, S, Err](events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err])(
+  inline def replayEvents[Ev, S, Err](inline events: Iterable[Ev]^)(using transition: Transition[Ev, S, Err])(
     using eventSourcing: EventSourcing[Ev, S, Err],
     abort: Abort[Err]
   ): Unit =

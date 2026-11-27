@@ -657,6 +657,33 @@ class PureLogicSpec extends munit.FunSuite {
     assertEquals(logs, Vector(5, 6, 0, 5))
   }
 
+  test("Capture checking: lambdas passed to updateAndGet, getAndUpdate, get, local and focus may use other capabilities") {
+    val (_, result) =
+      Logic.run(1, 10) {
+        val updated  = updateAndGet(_ + read)
+        val previous = getAndUpdate(_ + read)
+        val sum      = get(_ + read)
+        val shifted  = local(_ + get)(read)
+        val scaled   = focus(_ * get)(read)
+        (updated, previous, sum, shifted, scaled)
+      }
+    assertEquals(result, Right((21, (11, 11, 31, 31, 210))))
+  }
+
+  test("Capture checking: replayEvents accepts a collection that captures a capability") {
+    case class Added(amount: Int)
+
+    given Transition[Added, Int, Nothing] with {
+      def run(ev: Added) = update(_ + ev.amount)
+    }
+
+    val (events, finalState, _) = Logic.runEventSourcingInfallible(0, 5) {
+      replayEvents(List(1, 2).view.map(amount => Added(amount + read)))
+    }
+    assertEquals(finalState, 13)
+    assertEquals(events, Vector())
+  }
+
   test("Writer: rollback restores the log to an earlier snapshot, keeping pre-snapshot writes") {
     val (logs, _) =
       Logic.run((), ()) {

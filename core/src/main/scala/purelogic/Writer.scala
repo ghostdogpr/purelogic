@@ -101,7 +101,7 @@ object Writer {
   /**
     * Appends multiple values to the log at once.
     */
-  inline def writeAll[W](elems: IterableOnce[W]^)(using writer: Writer[W]): Unit = writer.writeAll(elems)
+  inline def writeAll[W](inline elems: IterableOnce[W]^)(using writer: Writer[W]): Unit = writer.writeAll(elems)
 
   /**
     * Clears all accumulated values.
@@ -112,7 +112,7 @@ object Writer {
     * Runs a block in a nested scope, returning both the captured writes and the result. The captured writes are also
     * forwarded to the outer writer.
     */
-  inline def capture[W, A](body: Writer[W] ?=> A)(using writer: Writer[W]): (Vector[W], A) = writer.capture(body)
+  inline def capture[W, A](inline body: Writer[W] ?=> A)(using writer: Writer[W]): (Vector[W], A) = writer.capture(body)
 
   /**
     * Captures the current contents of the log so they can be restored later with [[rollback]].
